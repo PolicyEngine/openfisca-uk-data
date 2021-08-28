@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="openfisca-uk-data",
-    version="0.1.1",
+    version="0.1.2",
     description=(
         "A Python package to manage OpenFisca-UK-compatible microdata"
     ),
@@ -19,6 +19,6 @@ setup(
         "synthimpute @ git+https://github.com/PSLmodels/synthimpute",
     ],
     entry_points={
-        "console_scripts": ["openfisca-data=openfisca_uk_data.cli:main"],
+        "console_scripts": ["openfisca-uk-data=openfisca_uk_data.cli:main"],
     },
 )
