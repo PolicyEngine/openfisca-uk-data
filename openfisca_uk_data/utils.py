@@ -69,7 +69,7 @@ def dataset(cls):
             if key is None:
                 return h5py.File(file)
             else:
-                with h5py.File(file, mode="r") as f:
+                with h5py.File(file, mode="a") as f:
                     values = np.array(f[key])
                 return values
         else:
