@@ -7,6 +7,7 @@ import numpy as np
 import warnings
 from openfisca_uk_data.datasets.frs.raw_frs import RawFRS
 import h5py
+from tqdm import tqdm
 
 
 @dataset
@@ -37,13 +38,14 @@ class BaseFRS:
             frs_household,
             frs_childcare,
         ) = [raw_frs_files[table] for table in tables]
-
+        task = tqdm(range(6), total=6)
         person = frs_adult.drop(["AGE"], axis=1)
         person["role"] = "adult"
 
         get_new_columns = lambda df: list(
             df.columns.difference(person.columns)
         ) + ["person_id"]
+        task.update()
         person = pd.merge(
             person,
             frs_child[get_new_columns(frs_child)],
@@ -51,6 +53,7 @@ class BaseFRS:
             on="person_id",
         ).sort_values("person_id")
 
+        task.update()
         person["role"].fillna("child", inplace=True)
 
         # link capital income sources (amounts summed by account type)
@@ -76,6 +79,7 @@ class BaseFRS:
 
         # link benefit income sources (amounts summed by benefit program)
 
+        task.update()
         bens = frs_benefits[get_new_columns(frs_benefits)]
 
         # distinguish income-related JSA and ESA from contribution-based variants
@@ -100,6 +104,7 @@ class BaseFRS:
             right_on="BENAMT_BENEFIT_CODE_",
         )
 
+        task.update()
         # link job-level data (all fields summed across all jobs)
 
         job = (
@@ -113,6 +118,7 @@ class BaseFRS:
         person["benunit_id"] = person["person_id"] // 1e1
         person["household_id"] = person["person_id"] // 1e2
 
+        task.update()
         childcare = (
             frs_childcare[get_new_columns(frs_childcare)]
             .groupby("person_id")
@@ -126,6 +132,7 @@ class BaseFRS:
 
         # generate benefit unit and household datasets
 
+        task.update()
         benunit = frs_benunit.fillna(0).add_prefix("B_")
 
         # Council Tax is severely under-reported in the micro-data - find
@@ -155,9 +162,11 @@ class BaseFRS:
         year = int(year)
 
         with h5py.File(BaseFRS.file(year), mode="w") as f:
-            for variable in person.columns:
-                f[f"{variable}/{year}"] = person[variable].values
-            for variable in benunit.columns:
-                f[f"{variable}/{year}"] = benunit[variable].values
-            for variable in household.columns:
-                f[f"{variable}/{year}"] = household[variable].values
+            for entity in (person, benunit, household):
+                for variable in entity.columns:
+                    try:
+                        f[f"{variable}/{year}"] = entity[variable].values
+                    except:
+                        f[f"{variable}/{year}"] = entity[
+                            variable
+                        ].values.astype("S")
