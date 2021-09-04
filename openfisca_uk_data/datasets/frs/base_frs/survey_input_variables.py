@@ -54,6 +54,11 @@ def get_FRS_variables():
         entity = Person
         definition_period = YEAR
 
+    class B_BURENT(Variable):
+        value_type = float
+        entity = BenUnit
+        definition_period = YEAR
+
     class H_HHRENT(Variable):
         value_type = float
         entity = Household
@@ -773,6 +778,7 @@ def get_FRS_variables():
         P_INRPINC,
         P_SEX,
         P_CHAMT,
+        B_BURENT,
     ]
 
     return FRS_variables
