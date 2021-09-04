@@ -64,7 +64,7 @@ def dataset(cls):
     cls.filename = staticmethod(filename)
 
     def load(year, key: str = None) -> pd.DataFrame:
-        file = cls.data_dir / cls.filename(year)
+        file = cls.file(year)
         if cls.model:
             if key is None:
                 return h5py.File(file, mode="a")
