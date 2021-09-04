@@ -67,9 +67,12 @@ def dataset(cls):
         file = cls.file(year)
         if cls.model:
             if key is None:
-                return h5py.File(file, mode="a")
+                try:
+                    return h5py.File(file, mode="a")
+                except OSError:
+                    return h5py.File(file, mode="r")
             else:
-                with h5py.File(file, mode="a") as f:
+                with h5py.File(file, mode="r") as f:
                     values = np.array(f[key])
                 return values
         else:
