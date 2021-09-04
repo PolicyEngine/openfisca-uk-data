@@ -7,7 +7,7 @@ import h5py
 import requests
 from tqdm import tqdm
 
-DEFAULT_SYNTH_URL = "https://github.com/nikhilwoodruff/openfisca-uk-data/releases/download/synth-frs/synth_frs_2018.h5"
+DEFAULT_SYNTH_URL = "https://github.com/UBICenter/openfisca-uk-data/releases/download/synth-frs/synth_frs_2018.h5"
 
 
 @dataset
