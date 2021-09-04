@@ -137,6 +137,15 @@ def get_input_variables():
             )
             return result
 
+    class benunit_rent(Variable):
+        value_type = float
+        entity = BenUnit
+        label = "Gross rent for the benefit unit"
+        definition_period = YEAR
+
+        def formula(household, period, parameters):
+            return household("B_BURENT", period) * WEEKS_IN_YEAR
+
     class rent(Variable):
         value_type = float
         entity = Household
@@ -823,6 +832,7 @@ def get_input_variables():
         H_household_id,
         P_role,
         childcare_cost,
+        benunit_rent,
     ]
     return input_variables
 

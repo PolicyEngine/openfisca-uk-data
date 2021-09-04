@@ -77,6 +77,11 @@ class FRS:
         ]
         with h5py.File(FRS.file(year), mode="w") as f:
             for variable in person_vars + benunit_vars + household_vars:
-                f[f"{variable}/{year}"] = base_frs_sim.calc(
-                    variable, year
-                ).values
+                try:
+                    f[f"{variable}/{year}"] = base_frs_sim.calc(
+                        variable, year
+                    ).values
+                except:
+                    f[f"{variable}/{year}"] = base_frs_sim.calc(
+                        variable, year
+                    ).values.astype("S")
