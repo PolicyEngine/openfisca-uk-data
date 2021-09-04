@@ -14,8 +14,6 @@ def main():
             BaseSPI,
             SPI,
             FRS_SPI_Adjusted,
-            RawCPS,
-            BaseCPS,
         )
     }
     parser = ArgumentParser(
