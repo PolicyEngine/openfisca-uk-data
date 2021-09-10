@@ -1,4 +1,4 @@
-name: Run tests 
+name: Run tests
 on:
   push:
     branches: [ master ]
@@ -28,7 +28,9 @@ jobs:
           export_default_credentials: true
       - name: Install package
         run: make install
+      - name: Download microdata
         run: gsutil cp gs://uk-policy-engine.appspot.com/raw_frs_2018.h5 raw_frs_2018.h5
+      - name: Save microdata
         run: openfisca-uk-data raw_frs save raw_frs_2018.h5 2018
       - name: Run tests
         run: make deploy
