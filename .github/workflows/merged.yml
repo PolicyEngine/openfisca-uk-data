@@ -1,4 +1,4 @@
-name: Run actions on merged commits
+name: Push
 on:
   push:
     branches: [ master ]
