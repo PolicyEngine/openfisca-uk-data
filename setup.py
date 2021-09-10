@@ -6,7 +6,7 @@ setup(
     description=(
         "A Python package to manage OpenFisca-UK-compatible microdata"
     ),
-    url="http://github.com/ubicenter/openfisca-data",
+    url="http://github.com/ubicenter/openfisca-uk-data",
     author="Nikhil Woodruff",
     author_email="nikhil.woodruff@outlook.com",
     packages=find_packages(),
@@ -16,6 +16,7 @@ setup(
         "tqdm",
         "tables",
         "h5py",
+        "OpenFisca-UK @ git+https://github.com/PSLmodels/openfisca-uk",
         "synthimpute @ git+https://github.com/PSLmodels/synthimpute",
     ],
     entry_points={
