@@ -8,7 +8,3 @@ BaseFRS.generate(2018)
 FRS.generate(2018)
 
 baseline = Microsimulation(dataset=FRS)
-
-def test_poverty():
-	poverty_rate = baseline.calc("in_poverty_bhc", map_to="person").mean()
-	assert 0.15 < poverty_rate < 0.17
