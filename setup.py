@@ -16,7 +16,6 @@ setup(
         "tqdm",
         "tables",
         "h5py",
-        "synthimpute @ git+https://github.com/PSLmodels/synthimpute",
     ],
     entry_points={
         "console_scripts": ["openfisca-uk-data=openfisca_uk_data.cli:main"],
