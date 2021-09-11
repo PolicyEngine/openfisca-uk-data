@@ -33,7 +33,7 @@ jobs:
         run: openfisca-uk-data raw_frs save raw_frs_2018.h5 2018
       - name: Run tests
         run: make test
-  Publish to PyPI:
+  Publish:
     if: github.repository == 'UBICenter/openfisca-uk-data'
     runs-on: ubuntu-latest
     steps:
