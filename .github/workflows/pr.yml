@@ -29,7 +29,11 @@ jobs:
         run: make install
       - name: Download microdata
         run: gsutil cp gs://policyengine-uk-data/raw_frs_2018.h5 raw_frs_2018.h5
+      - name: Download UKMOD aggregates
+        run: gsutil cp gs://policyengine-uk-data/ukmod_agg_2018.h5 ukmod_agg_2018.h5
       - name: Save microdata
         run: openfisca-uk-data raw_frs save raw_frs_2018.h5 2018
+      - name: Save UKMOD aggregates
+        run: openfisca-uk-data ukmod_agg save ukmod_agg_2018.h5 2018
       - name: Run tests
         run: make test
