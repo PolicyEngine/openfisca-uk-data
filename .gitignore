@@ -1,5 +1,7 @@
 **/__pycache__
 **/*.h5
+**/.pytest_cache
+build/
+dist/
 openfisca_uk_data.egg-info/
 .vscode/
-**/.pytest_cache

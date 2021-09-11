@@ -6,7 +6,7 @@ setup(
     description=(
         "A Python package to manage OpenFisca-UK-compatible microdata"
     ),
-    url="http://github.com/ubicenter/openfisca-data",
+    url="http://github.com/ubicenter/openfisca-uk-data",
     author="Nikhil Woodruff",
     author_email="nikhil.woodruff@outlook.com",
     packages=find_packages(),
