@@ -9,6 +9,11 @@ def get_FRS_variables():
         entity = Person
         definition_period = ETERNITY
 
+    class P_CVPAY(Variable):
+        value_type = float
+        entity = Person
+        definition_period = ETERNITY
+
     class P_INOTHBEN(Variable):
         value_type = float
         entity = Person
@@ -64,6 +69,11 @@ def get_FRS_variables():
         entity = Household
         definition_period = YEAR
 
+    class H_MORTINT(Variable):
+        value_type = float
+        entity = Household
+        definition_period = YEAR
+
     class P_GROSS4(Variable):
         value_type = float
         entity = Person
@@ -79,12 +89,12 @@ def get_FRS_variables():
         entity = Household
         definition_period = YEAR
 
-    class P_UGRSPAY(Variable):
+    class P_INEARNS(Variable):
         value_type = float
         entity = Person
         definition_period = YEAR
 
-    class P_UDEDUC1(Variable):
+    class P_DEDUC1(Variable):
         value_type = float
         entity = Person
         definition_period = YEAR
@@ -614,6 +624,16 @@ def get_FRS_variables():
         entity = Person
         definition_period = YEAR
 
+    class P_COST(Variable):
+        value_type = int
+        entity = Person
+        definition_period = YEAR
+
+    class P_REGISTRD(Variable):
+        value_type = int
+        entity = Person
+        definition_period = YEAR
+
     class H_PTENTYP2(Variable):
         value_type = float
         entity = Household
@@ -657,12 +677,14 @@ def get_FRS_variables():
         H_GBHSCOST,
         H_NIHSCOST,
         H_HHRENT,
+        H_MORTINT,
         H_PTENTYP2,
+        P_CVPAY,
         P_GROSS4,
         B_GROSS4,
         H_GROSS4,
-        P_UGRSPAY,
-        P_UDEDUC1,
+        P_INEARNS,
+        P_DEDUC1,
         P_INPENINC,
         P_PROFIT1,
         P_PROFIT2,
@@ -778,6 +800,8 @@ def get_FRS_variables():
         P_INRPINC,
         P_SEX,
         P_CHAMT,
+        P_COST,
+        P_REGISTRD,
         B_BURENT,
     ]
 

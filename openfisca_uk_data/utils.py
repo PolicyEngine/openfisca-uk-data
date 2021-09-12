@@ -134,10 +134,12 @@ def dataset(cls):
 
     if not hasattr(cls, "save"):
         cls.save = staticmethod(save)
-    
+
     if not hasattr(cls, "upload"):
+
         def upload(year):
             from google.cloud import storage
+
             client = storage.Client()
             bucket = client.get_bucket("policyengine-uk-data")
             blob = bucket.blob(cls.file(year).name)
@@ -145,10 +147,12 @@ def dataset(cls):
                 blob.upload_from_file(f)
 
         cls.upload = staticmethod(upload)
-    
+
     if not hasattr(cls, "download"):
+
         def download(year):
             from google.cloud import storage
+
             client = storage.Client()
             bucket = client.get_bucket("policyengine-uk-data")
             blob = bucket.blob(cls.file(year).name)

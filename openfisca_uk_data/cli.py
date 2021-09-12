@@ -1,5 +1,4 @@
 from argparse import ArgumentParser
-from openfisca_uk_data.datasets.frs.ukmod_agg import UKMODAggregates
 from openfisca_uk_data import *
 
 
@@ -8,7 +7,7 @@ def main():
         ds.name: ds
         for ds in (
             RawFRS,
-            UKMODAggregates,
+            UKMODFRS,
             BaseFRS,
             FRS,
             SynthFRS,

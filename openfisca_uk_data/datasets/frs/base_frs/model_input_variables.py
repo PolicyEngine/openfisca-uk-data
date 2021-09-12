@@ -28,7 +28,14 @@ def get_input_variables():
         definition_period = YEAR
 
         def formula(person, period, parameters):
-            return person("P_SEINCAM2", period) * WEEKS_IN_YEAR
+            # FRS team suggests to replace the SEINCAM2 value of the primary earner in
+            # household with ID 8069(00) with SEINCAMT (~£20m -> ~£500k)
+            se_income = person("P_SEINCAM2", period) * WEEKS_IN_YEAR
+            return where(
+                person("person_id", period) == 806911,
+                person("P_SEINCAMT", period),
+                se_income,
+            )
 
     class property_income(Variable):
         value_type = float
@@ -40,6 +47,11 @@ def get_input_variables():
         def formula(person, period, parameters):
             return (
                 person("sublet_income", period)
+                + person("is_household_head", period)
+                * person.household.max(
+                    person.household.members("P_CVPAY", period)
+                )
+                * WEEKS_IN_YEAR
                 + person("P_ROYYR1", period) * WEEKS_IN_YEAR
             )
 
@@ -155,6 +167,15 @@ def get_input_variables():
         def formula(household, period, parameters):
             return household("H_HHRENT", period) * WEEKS_IN_YEAR
 
+    class mortgage(Variable):
+        value_type = float
+        entity = Household
+        label = "Total mortgage payments"
+        definition_period = YEAR
+
+        def formula(household, period, parameters):
+            return household("H_MORTINT", period) * WEEKS_IN_YEAR
+
     class employment_income(Variable):
         value_type = float
         entity = Person
@@ -163,7 +184,7 @@ def get_input_variables():
         reference = "Income Tax (Earnings and Pensions) Act 2003 s. 1(1)(a)"
 
         def formula(person, period, parameters):
-            return person("P_UGRSPAY", period) * WEEKS_IN_YEAR
+            return person("P_INEARNS", period) * WEEKS_IN_YEAR
 
     class employment_expenses(Variable):
         value_type = float
@@ -183,7 +204,7 @@ def get_input_variables():
         definition_period = YEAR
 
         def formula(person, period, parameters):
-            return person("P_UDEDUC1", period) * WEEKS_IN_YEAR
+            return person("P_DEDUC1", period) * WEEKS_IN_YEAR
 
     class pension_income(Variable):
         value_type = float
@@ -191,9 +212,6 @@ def get_input_variables():
         label = "Income from pensions"
         definition_period = YEAR
         reference = "Income Tax (Earnings and Pensions) Act 2003 s. 1(1)(b)"
-
-        def formula(person, period, parameters):
-            return person("P_INPENINC", period) * WEEKS_IN_YEAR
 
     class trading_income(Variable):
         value_type = float
@@ -260,7 +278,15 @@ def get_input_variables():
         definition_period = YEAR
 
         def formula(person, period, parameters):
-            return person("H_SUBLET", period) * WEEKS_IN_YEAR
+            tenure = person.household("tenure_type", period)
+            tenures = tenure.possible_values
+            is_owned = (tenure == tenures.OWNED_OUTRIGHT) | (
+                tenure == tenures.OWNED_WITH_MORTGAGE
+            )
+            sublet_income = person("H_SUBLET", period) * WEEKS_IN_YEAR
+            return (
+                sublet_income * is_owned * (sublet_income > 0) * WEEKS_IN_YEAR
+            )
 
     class tax_reported(Variable):
         value_type = float
@@ -298,9 +324,6 @@ def get_input_variables():
         entity = Person
         label = "Cost of childcare"
         definition_period = YEAR
-
-        def formula(person, period, parameters):
-            return person("P_CHAMT", period) * WEEKS_IN_YEAR
 
     class benunit_weight(Variable):
         value_type = float
@@ -650,7 +673,7 @@ def get_input_variables():
 
         def formula(household, period, parameters):
             return (
-                household("H_GBHSCOST", period)
+                household("H_GBHSCOST", period) * WEEKS_IN_YEAR
                 + household("H_NIHSCOST", period) * WEEKS_IN_YEAR
             )
 
@@ -664,7 +687,7 @@ def get_input_variables():
             return household("H_CTANNUAL", period)
 
     class person_id(Variable):
-        value_type = float
+        value_type = int
         entity = Person
         label = "ID for the person"
         definition_period = YEAR
@@ -673,7 +696,7 @@ def get_input_variables():
             return person("P_person_id", period)
 
     class benunit_id(Variable):
-        value_type = float
+        value_type = int
         entity = BenUnit
         label = "ID for the family"
         definition_period = YEAR
@@ -682,7 +705,7 @@ def get_input_variables():
             return benunit("B_benunit_id", period)
 
     class household_id(Variable):
-        value_type = float
+        value_type = int
         entity = Household
         label = "ID for the household"
         definition_period = YEAR
@@ -766,6 +789,7 @@ def get_input_variables():
         definition_period = YEAR
 
     input_variables = [
+        mortgage,
         num_bedrooms,
         accommodation_type,
         region,
