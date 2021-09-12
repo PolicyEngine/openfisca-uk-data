@@ -3,7 +3,7 @@ This module tests the FRS dataset produced by openfisca-uk-data against UKMOD - 
 """
 
 import numpy as np
-from openfisca_uk_data import BaseFRS, FRS, UKMODFRS
+from openfisca_uk_data import BaseFRS, FRS, UKMODFRS, RawFRS
 from openfisca_uk_data.datasets.frs.base_frs.model_input_variables import (
     get_input_variables,
 )
@@ -13,10 +13,9 @@ from microdf import MicroDataFrame
 from itertools import product
 from functools import partial
 
-# Assumes that the RawFRS dataset is available, and runs tests
-# on the FRS dataset generated.
 
 TEST_YEAR = 2018
+# Variable pairs to check for similarity
 PAIRS = dict(
     employment_income="yem",
     pension_income="ypp",
@@ -29,7 +28,7 @@ PAIRS = dict(
     childcare_cost="xcc",
     weekly_hours="lhw",
 )
-MIN_ABS_ERROR = 1.0
+MIN_ABS_ERROR = 1.0 # Always pass tests if the abs. distance < MIN_ABS_ERROR
 REL_ERROR_TOLERANCE = dict(
     employment_income=0.01,
     pension_income=0.01,
@@ -44,12 +43,21 @@ REL_ERROR_TOLERANCE = dict(
 )
 
 
-variables = get_input_variables()
+if TEST_YEAR not in UKMODFRS.years:
+    raise FileNotFoundError("UKMOD FRS needed to run tests against.")
+if TEST_YEAR not in RawFRS.years:
+    raise FileNotFoundError("Raw FRS needed to construct datasets.")
+
+# Run the dataset generation and load test data
+
 BaseFRS.generate(TEST_YEAR)
 FRS.generate(TEST_YEAR)
 baseline = Microsimulation(dataset=FRS)
 ukmod = UKMODFRS.load(TEST_YEAR, "person")
 ukmod = MicroDataFrame(ukmod, weights=ukmod.person_weight)
+
+# Prepare the metrics and their calculating functions
+
 metrics = list(map(lambda n: f"q{n}", range(0, 110, 10))) + ["sum", "nonzero"]
 get_quantile = lambda values, q: values[values > 0].quantile(q)
 calc_functions = [
@@ -57,6 +65,7 @@ calc_functions = [
 ] + [lambda values: values.sum(), lambda values: (values > 0).sum()]
 metric_to_func = {m: f for m, f in zip(metrics, calc_functions)}
 
+# For each variable pair and metric, check that the error is within absolute and relative thresholds
 
 @pytest.mark.parametrize(
     "variable,UKMOD_variable,metric",
@@ -70,7 +79,6 @@ def test_distribution_parameter_close_to_UKMOD(
     rel_err = result / target - 1
     abs_err = result - target
     max_err = REL_ERROR_TOLERANCE[variable]
-    # assert OpenFisca-UK distribution parameters are within relative error thresholds
 
     assert (
         result == target
