@@ -7,7 +7,8 @@ def main():
         ds.name: ds
         for ds in (
             RawFRS,
-            UKMODFRS,
+            UKMODInput,
+            UKMODOutput,
             BaseFRS,
             FRS,
             SynthFRS,

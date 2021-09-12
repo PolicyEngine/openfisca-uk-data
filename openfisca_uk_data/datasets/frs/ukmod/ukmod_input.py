@@ -19,8 +19,8 @@ MONTHLY_VARIABLES = (
 
 
 @dataset
-class UKMODFRS:
-    name = "ukmod_frs"
+class UKMODInput:
+    name = "ukmod_input"
 
     def generate(tabfile: str, year: int):
         tabfile = Path(tabfile)
@@ -36,5 +36,5 @@ class UKMODFRS:
         df.set_index("person_id", inplace=True)
         for variable in MONTHLY_VARIABLES:
             df[variable] *= 12
-        with pd.HDFStore(UKMODFRS.file(year)) as f:
+        with pd.HDFStore(UKMODInput.file(year)) as f:
             f["person"] = pd.DataFrame(df)

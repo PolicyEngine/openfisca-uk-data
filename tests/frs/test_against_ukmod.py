@@ -3,7 +3,7 @@ This module tests the FRS dataset produced by openfisca-uk-data against UKMOD - 
 """
 
 import numpy as np
-from openfisca_uk_data import BaseFRS, FRS, UKMODFRS, RawFRS
+from openfisca_uk_data import BaseFRS, FRS, UKMODInput, RawFRS
 from openfisca_uk_data.datasets.frs.base_frs.model_input_variables import (
     get_input_variables,
 )
@@ -28,7 +28,7 @@ PAIRS = dict(
     childcare_cost="xcc",
     weekly_hours="lhw",
 )
-MIN_ABS_ERROR = 1.0 # Always pass tests if the abs. distance < MIN_ABS_ERROR
+MIN_ABS_ERROR = 1.0  # Always pass tests if the abs. distance < MIN_ABS_ERROR
 REL_ERROR_TOLERANCE = dict(
     employment_income=0.01,
     pension_income=0.01,
@@ -43,7 +43,7 @@ REL_ERROR_TOLERANCE = dict(
 )
 
 
-if TEST_YEAR not in UKMODFRS.years:
+if TEST_YEAR not in UKMODInput.years:
     raise FileNotFoundError("UKMOD FRS needed to run tests against.")
 if TEST_YEAR not in RawFRS.years:
     raise FileNotFoundError("Raw FRS needed to construct datasets.")
@@ -53,7 +53,7 @@ if TEST_YEAR not in RawFRS.years:
 BaseFRS.generate(TEST_YEAR)
 FRS.generate(TEST_YEAR)
 baseline = Microsimulation(dataset=FRS)
-ukmod = UKMODFRS.load(TEST_YEAR, "person")
+ukmod = UKMODInput.load(TEST_YEAR, "person")
 ukmod = MicroDataFrame(ukmod, weights=ukmod.person_weight)
 
 # Prepare the metrics and their calculating functions
@@ -66,6 +66,7 @@ calc_functions = [
 metric_to_func = {m: f for m, f in zip(metrics, calc_functions)}
 
 # For each variable pair and metric, check that the error is within absolute and relative thresholds
+
 
 @pytest.mark.parametrize(
     "variable,UKMOD_variable,metric",
