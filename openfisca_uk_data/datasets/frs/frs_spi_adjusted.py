@@ -8,7 +8,6 @@ import h5py
 class FRS_SPI_Adjusted:
     name = "frs_spi_adj"
     model = UK
-    input_reform_from_year = uprate_variables(MAIN_INPUT_VARIABLES)
 
     def generate(year):
         from openfisca_uk import Microsimulation

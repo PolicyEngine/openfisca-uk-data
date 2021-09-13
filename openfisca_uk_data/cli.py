@@ -9,7 +9,6 @@ def main():
             RawFRS,
             UKMODInput,
             UKMODOutput,
-            BaseFRS,
             FRS,
             SynthFRS,
             RawSPI,
