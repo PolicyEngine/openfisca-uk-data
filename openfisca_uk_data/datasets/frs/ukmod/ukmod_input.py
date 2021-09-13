@@ -4,17 +4,13 @@ import numpy as np
 from microdf import MicroDataFrame
 from openfisca_uk_data.utils import dataset
 
-MONTHLY_VARIABLES = (
-    "yem",
-    "ypp",
-    "yse",
-    "ypr",
-    "yiynt",
-    "tpcpe",
-    "xhcrt",
-    "xhcmomi",
-    "xhc",
-    "xcc",
+NON_MONTHLY_VARIABLES = (
+    "person_id",
+    "benunit_id",
+    "household_id",
+    "person_weight",
+    "lhw",
+    "dag",
 )
 
 
@@ -29,12 +25,15 @@ class UKMODInput:
         # Add IDs to match against OpenFisca-UK
         df["person_id"] = (
             df.idorighh * 1e2 + df.idorigbenunit * 1e1 + df.idorigperson
+        ).astype(int)
+        df["benunit_id"] = (df.idorighh * 1e2 + df.idorigbenunit * 1e1).astype(
+            int
         )
-        df["benunit_id"] = df.idorighh * 1e2 + df.idorigbenunit * 1e1
-        df["household_id"] = df.idorighh * 1e2
+        df["household_id"] = (df.idorighh * 1e2).astype(int)
         df["person_weight"] = df.dwt
         df.set_index("person_id", inplace=True)
-        for variable in MONTHLY_VARIABLES:
-            df[variable] *= 12
+        for variable in df.columns:
+            if variable not in NON_MONTHLY_VARIABLES:
+                df[variable] *= 12
         with pd.HDFStore(UKMODInput.file(year)) as f:
             f["person"] = pd.DataFrame(df)

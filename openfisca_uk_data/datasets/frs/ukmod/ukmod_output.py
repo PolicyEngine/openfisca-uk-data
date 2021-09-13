@@ -4,6 +4,13 @@ import numpy as np
 from microdf import MicroDataFrame
 from openfisca_uk_data.utils import dataset
 
+NON_MONTHLY_VARIABLES = (
+    "person_id",
+    "benunit_id",
+    "household_id",
+    "person_weight",
+)
+
 
 @dataset
 class UKMODOutput:
@@ -22,6 +29,7 @@ class UKMODOutput:
         df["person_weight"] = df.dwt
         df.set_index("person_id", inplace=True)
         for variable in df.columns:
-            df[variable] *= 12
+            if variable not in NON_MONTHLY_VARIABLES:
+                df[variable] *= 12
         with pd.HDFStore(UKMODOutput.file(year)) as f:
             f["person"] = pd.DataFrame(df)
