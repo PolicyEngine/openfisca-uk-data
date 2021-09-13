@@ -3,45 +3,25 @@ This module tests the FRS dataset produced by openfisca-uk-data against UKMOD - 
 """
 
 import numpy as np
-from openfisca_uk_data import BaseFRS, FRS, UKMODInput, RawFRS
-from openfisca_uk_data.datasets.frs.base_frs.model_input_variables import (
-    get_input_variables,
-)
-from openfisca_uk import Microsimulation
+import pandas as pd
+from openfisca_uk_data import FRS, UKMODInput, RawFRS, REPO
+from openfisca_uk import Microsimulation, BASELINE_VARIABLES
 import pytest
 from microdf import MicroDataFrame
 from itertools import product
 from functools import partial
-
+import yaml
 
 TEST_YEAR = 2018
 # Variable pairs to check for similarity
-PAIRS = dict(
-    employment_income="yem",
-    pension_income="ypp",
-    self_employment_income="yse",
-    property_income="ypr",
-    pension_contributions="tpcpe",
-    rent="xhcrt",
-    mortgage="xhcmomi",
-    housing_costs="xhc",
-    childcare_cost="xcc",
-    weekly_hours="lhw",
-)
-MIN_ABS_ERROR = 1.0  # Always pass tests if the abs. distance < MIN_ABS_ERROR
-REL_ERROR_TOLERANCE = dict(
-    employment_income=0.01,
-    pension_income=0.01,
-    self_employment_income=0.02,
-    property_income=0.025,
-    pension_contributions=0.01,
-    rent=0.01,
-    mortgage=0.01,
-    housing_costs=0.01,
-    childcare_cost=0.01,
-    weekly_hours=0.02,
-)
+with open(REPO.parent / "tests" / "frs" / "variable_ukmod_map.yml") as f:
+    metadata = yaml.load(f)
 
+MAX_REL_ERROR = 0.05
+MAX_QUANTILE_REL_ERROR = 0.05
+MIN_QUANTILE_ABS_ERROR = 25
+MAX_MEAN_REL_ERROR = 0.05
+MIN_NONZERO_AGREEMENT = 0.99
 
 if TEST_YEAR not in UKMODInput.years:
     raise FileNotFoundError("UKMOD FRS needed to run tests against.")
@@ -50,39 +30,89 @@ if TEST_YEAR not in RawFRS.years:
 
 # Run the dataset generation and load test data
 
-BaseFRS.generate(TEST_YEAR)
 FRS.generate(TEST_YEAR)
 baseline = Microsimulation(dataset=FRS)
 ukmod = UKMODInput.load(TEST_YEAR, "person")
+ukmod_hh = ukmod.groupby("household_id").sum()
 ukmod = MicroDataFrame(ukmod, weights=ukmod.person_weight)
-
-# Prepare the metrics and their calculating functions
-
-metrics = list(map(lambda n: f"q{n}", range(0, 110, 10))) + ["sum", "nonzero"]
-get_quantile = lambda values, q: values[values > 0].quantile(q)
-calc_functions = [
-    partial(get_quantile, q=q) for q in np.linspace(0, 1, 11)
-] + [lambda values: values.sum(), lambda values: (values > 0).sum()]
-metric_to_func = {m: f for m, f in zip(metrics, calc_functions)}
 
 # For each variable pair and metric, check that the error is within absolute and relative thresholds
 
 
 @pytest.mark.parametrize(
-    "variable,UKMOD_variable,metric",
-    map(lambda x: (*x[0], x[1]), product(PAIRS.items(), metrics)),
+    "variable,quantile",
+    product(metadata.keys(), np.linspace(0.1, 0.9, 9).round(1)),
 )
-def test_distribution_parameter_close_to_UKMOD(
-    variable, UKMOD_variable, metric
-):
-    result = metric_to_func[metric](baseline.calc(variable, period=TEST_YEAR))
-    target = metric_to_func[metric](ukmod[UKMOD_variable])
-    rel_err = result / target - 1
-    abs_err = result - target
-    max_err = REL_ERROR_TOLERANCE[variable]
+def test_quantile(variable, quantile):
+    result = baseline.calc(variable, period=TEST_YEAR)
+    target = ukmod[metadata[variable]]
+    result_quantile = result[result > 0].quantile(quantile)
+    target_quantile = target[target > 0].quantile(quantile)
 
     assert (
-        result == target
-        or (-MIN_ABS_ERROR < abs_err < MIN_ABS_ERROR)
-        or (-max_err < rel_err < max_err)
+        abs(result_quantile - target_quantile) < MIN_QUANTILE_ABS_ERROR
+        or abs(result_quantile / target_quantile - 1) < MAX_QUANTILE_REL_ERROR
+    )
+
+
+@pytest.mark.parametrize("variable", metadata.keys())
+def test_aggregate(variable):
+    result = baseline.calc(variable, period=TEST_YEAR).sum()
+    target = ukmod[metadata[variable]].sum()
+
+    assert abs(result / target - 1) < MAX_REL_ERROR
+
+
+@pytest.mark.parametrize("variable", metadata.keys())
+def test_nonzero_count(variable):
+    result = (baseline.calc(variable, period=TEST_YEAR) > 0).sum()
+    target = (ukmod[metadata[variable]] > 0).sum()
+
+    assert abs(result / target - 1) < MAX_REL_ERROR
+
+
+@pytest.mark.parametrize("variable", metadata.keys())
+def test_average_error_among_nonzero(variable):
+    result = pd.Series(
+        baseline.calc(variable, period=TEST_YEAR, map_to="household").values,
+        index=baseline.calc("household_id", period=TEST_YEAR).values,
+    )
+    target = ukmod_hh[metadata[variable]]
+    error = (result / target - 1)[target > 0].abs()
+
+    assert error.mean() < MAX_MEAN_REL_ERROR
+
+
+@pytest.mark.parametrize("variable", metadata.keys())
+def test_ukmod_nonzero_agreement(variable):
+    result = pd.Series(
+        baseline.calc(variable, period=TEST_YEAR, map_to="household").values,
+        index=baseline.calc("household_id", period=TEST_YEAR).values,
+    )
+    target = ukmod_hh[metadata[variable]]
+    error = (result > 0) == (target == 0)
+
+    assert error.mean() < MIN_NONZERO_AGREEMENT
+
+
+# Debugging utilities
+
+
+def compare_datasets(
+    openfisca_uk_variables: list, ukmod_variables: list, entity: str = "person"
+):
+    if entity == "person":
+        ukmod_df = ukmod
+    elif entity == "benunit":
+        ukmod_df = ukmod.groupby("benunit_id").sum()
+    else:
+        ukmod_df = ukmod_hh
+    return pd.concat(
+        [
+            baseline.df(
+                openfisca_uk_variables
+                + ["person_id", "benunit_id", "household_id"]
+            ).set_index(f"{entity}_id"),
+            ukmod_df[ukmod_variables],
+        ]
     )
