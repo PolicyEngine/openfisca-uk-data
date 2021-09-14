@@ -1,9 +1,14 @@
 age: dag
 employment_income: yem
 self_employment_income: yse
+tax_free_savings_income: yiynt
 capital_income: yiy
-property_income: ypr
-maintenance_income: yptmp
+property_income: 
+  ukmod: ypr
+  max_quantile_rel_error: 0.06
+maintenance_income: 
+  ukmod: yptmp
+  max_quantile_rel_error: 0.07
 miscellaneous_income: yot01
 private_transfer_income: yptot
 lump_sum_income: yls
@@ -21,7 +26,9 @@ maternity_allowance_reported: bmana
 pension_credit_reported: boamt
 child_tax_credit_reported: bfamt
 working_tax_credit_reported: bwkmt
-winter_fuel_allowance_reported: boaht
+winter_fuel_allowance_reported:
+  ukmod: boaht
+  min_quantile_abs_error: 55
 incapacity_benefit_reported: bdict0118
 universal_credit_reported: bsauc
 PIP_M_reported: bdimbwa
@@ -30,7 +37,9 @@ SSP_reported: bhlwk
 student_loans: bedsl
 student_payments: bedes
 council_tax_benefit_reported: bmu
-council_tax: tmu01
+council_tax:
+  ukmod: tmu02
+  max_quantile_rel_error: 0.07
 maintenance_expenses: xmp
 childcare_expenses: xcc
 housing_costs: xhc

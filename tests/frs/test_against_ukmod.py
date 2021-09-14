@@ -36,6 +36,23 @@ ukmod = UKMODInput.load(TEST_YEAR, "person")
 ukmod_hh = ukmod.groupby("household_id").sum()
 ukmod = MicroDataFrame(ukmod, weights=ukmod.person_weight)
 
+
+def get_test_params(variable):
+    test_params = dict(
+        ukmod=metadata[variable],
+        min_quantile_abs_error=MIN_QUANTILE_ABS_ERROR,
+        max_quantile_rel_error=MAX_QUANTILE_REL_ERROR,
+        max_rel_error=MAX_MEAN_REL_ERROR,
+        max_mean_rel_error=MAX_MEAN_REL_ERROR,
+        min_nonzero_agreement=MIN_NONZERO_AGREEMENT,
+    )
+    if isinstance(metadata[variable], dict):
+        test_params.update(**metadata[variable])
+    else:
+        test_params["ukmod"] = metadata[variable]
+    return test_params
+
+
 # For each variable pair and metric, check that the error is within absolute and relative thresholds
 
 
@@ -44,75 +61,59 @@ ukmod = MicroDataFrame(ukmod, weights=ukmod.person_weight)
     product(metadata.keys(), np.linspace(0.1, 0.9, 9).round(1)),
 )
 def test_quantile(variable, quantile):
+    test_params = get_test_params(variable)
     result = baseline.calc(variable, period=TEST_YEAR)
-    target = ukmod[metadata[variable]]
+    target = ukmod[test_params["ukmod"]]
     result_quantile = result[result > 0].quantile(quantile)
     target_quantile = target[target > 0].quantile(quantile)
 
     assert (
-        abs(result_quantile - target_quantile) < MIN_QUANTILE_ABS_ERROR
-        or abs(result_quantile / target_quantile - 1) < MAX_QUANTILE_REL_ERROR
+        abs(result_quantile - target_quantile)
+        < test_params["min_quantile_abs_error"]
+        or abs(result_quantile / target_quantile - 1)
+        < test_params["max_quantile_rel_error"]
     )
 
 
 @pytest.mark.parametrize("variable", metadata.keys())
 def test_aggregate(variable):
+    test_params = get_test_params(variable)
     result = baseline.calc(variable, period=TEST_YEAR).sum()
-    target = ukmod[metadata[variable]].sum()
+    target = ukmod[test_params["ukmod"]].sum()
 
-    assert abs(result / target - 1) < MAX_REL_ERROR
+    assert abs(result / target - 1) < test_params["max_rel_error"]
 
 
 @pytest.mark.parametrize("variable", metadata.keys())
 def test_nonzero_count(variable):
+    test_params = get_test_params(variable)
     result = (baseline.calc(variable, period=TEST_YEAR) > 0).sum()
-    target = (ukmod[metadata[variable]] > 0).sum()
+    target = (ukmod[test_params["ukmod"]] > 0).sum()
 
-    assert abs(result / target - 1) < MAX_REL_ERROR
+    assert abs(result / target - 1) < test_params["max_rel_error"]
 
 
 @pytest.mark.parametrize("variable", metadata.keys())
 def test_average_error_among_nonzero(variable):
+    test_params = get_test_params(variable)
     result = pd.Series(
         baseline.calc(variable, period=TEST_YEAR, map_to="household").values,
         index=baseline.calc("household_id", period=TEST_YEAR).values,
     )
-    target = ukmod_hh[metadata[variable]]
+    target = ukmod_hh[test_params["ukmod"]]
     error = (result / target - 1)[target > 0].abs()
 
-    assert error.mean() < MAX_MEAN_REL_ERROR
+    assert error.mean() < test_params["max_mean_rel_error"]
 
 
 @pytest.mark.parametrize("variable", metadata.keys())
 def test_ukmod_nonzero_agreement(variable):
+    test_params = get_test_params(variable)
     result = pd.Series(
         baseline.calc(variable, period=TEST_YEAR, map_to="household").values,
         index=baseline.calc("household_id", period=TEST_YEAR).values,
     )
-    target = ukmod_hh[metadata[variable]]
+    target = ukmod_hh[test_params["ukmod"]]
     error = (result > 0) == (target == 0)
 
-    assert error.mean() < MIN_NONZERO_AGREEMENT
-
-
-# Debugging utilities
-
-
-def compare_datasets(
-    openfisca_uk_variables: list, ukmod_variables: list, entity: str = "person"
-):
-    if entity == "person":
-        ukmod_df = ukmod
-    elif entity == "benunit":
-        ukmod_df = ukmod.groupby("benunit_id").sum()
-    else:
-        ukmod_df = ukmod_hh
-    return pd.concat(
-        [
-            baseline.df(
-                openfisca_uk_variables
-                + ["person_id", "benunit_id", "household_id"]
-            ).set_index(f"{entity}_id"),
-            ukmod_df[ukmod_variables],
-        ]
-    )
+    assert error.mean() < test_params["min_nonzero_agreement"]

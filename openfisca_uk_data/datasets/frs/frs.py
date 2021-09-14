@@ -268,10 +268,13 @@ def add_household_variables(frs: h5py.File, household: DataFrame):
 
     # Impute Council Tax
 
+    region = household.GVTREGNO.fillna("N/A")
+    band = household.CTBAND.fillna("N/A")
+    single_person = (household.ADULTH == 1).fillna("N/A")
     CT_mean = household.groupby(
-        ["GVTREGNO", "CTBAND"], dropna=False
+        [region, band, single_person], dropna=False
     ).CTANNUAL.mean()
-    pairs = household.set_index(["GVTREGNO", "CTBAND"])
+    pairs = household.set_index([region, band, single_person])
     hh_CT_mean = CT_mean[pairs.index].values
     CT_imputed = hh_CT_mean
     council_tax = pd.Series(
@@ -279,9 +282,20 @@ def add_household_variables(frs: h5py.File, household: DataFrame):
             household.CTANNUAL.isna(), max_(CT_imputed, 0), household.CTANNUAL
         )
     )
-    average_CT = council_tax.dropna().mean()
-    council_tax.fillna(average_CT, inplace=True)
     frs["council_tax"] = council_tax
+
+    frs["council_tax_band"] = (
+        household.CTBAND.fillna(4)
+        .map(
+            {
+                i: band
+                for i, band in zip(
+                    range(1, 10), ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
+                )
+            }
+        )
+        .astype("S")
+    )
 
     # Add housing costs
 
@@ -335,52 +349,37 @@ def add_market_income(
         * 52
     )
 
-    DIVIDEND_ACCOUNTS = (7, 8, 9, 13, 22, 23, 24)
-    TAX_FREE_SAVINGS_ACCOUNTS = (6, 14, 21)
     frs["tax_free_savings_income"] = (
-        account.ACCINT[account.ACCOUNT.isin(TAX_FREE_SAVINGS_ACCOUNTS)]
+        account.ACCINT[account.ACCOUNT == 21]
         .groupby(account.person_id)
         .sum()
         .reindex(index=person.index)
         .fillna(0)
         * 52
-    )
-    dividend_tax_paid = (
-        account.ACCINT[account.INVTAX == 1]
-        .groupby(account.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
-        * 52
-        * 0.25
-    )
-    frs["dividend_income"] = (
-        account.ACCINT[account.ACCOUNT.isin(DIVIDEND_ACCOUNTS)]
-        .groupby(account.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
-        * 52
-        + dividend_tax_paid
-    )
-    savings_interest_tax_paid = (
-        account.ACCINT[account.ACCTAX == 1]
-        .groupby(account.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
-        * 52
-        * 0.25
     )
     frs["savings_interest_income"] = (
-        account.ACCINT.groupby(account.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
-        * 52
-        + savings_interest_tax_paid
-        - frs["dividend_income"]
-    )
+        (account.ACCINT * np.where(account.ACCTAX == 1, 1.25, 1))[
+            account.ACCOUNT.isin((1, 3, 5, 27, 28))
+        ]
+    ).groupby(account.person_id).sum().reindex(index=person.index).fillna(
+        0
+    ) * 52 + frs[
+        "tax_free_savings_income"
+    ][
+        ...
+    ]
+    frs["dividend_income"] = (
+        account.ACCINT * np.where(account.INVTAX == 1, 1.25, 1)
+    )[
+        ((account.ACCOUNT == 6) & (account.INVTAX == 1))
+        | account.ACCOUNT.isin((7, 8))
+    ].groupby(
+        account.person_id
+    ).sum().reindex(
+        index=person.index
+    ).fillna(
+        0
+    ) * 52
     is_head = person.HRPID == 1
     frs["property_income"] = (
         is_head
@@ -396,9 +395,44 @@ def add_market_income(
         + person.ROYYR1
     ) * 52
 
+    # Discrepancy in maintenance income (UKMOD appears to use last amount rather than usual, with "not usual" answer):
+
+    INVERTED_USUAL_AMOUNT_HOUSEHOLDS = (
+        1458600,
+        1033500,
+        322100,
+        42100,
+        590400,
+        645300,
+        1901400,
+        388000,
+    )
+
     frs["maintenance_income"] = (
-        max_(where(person.MNTUS1 == 2, person.MNTUSAM1, person.MNTAMT1), 0)
-        + max_(where(person.MNTUS2 == 2, person.MNTUSAM2, person.MNTAMT2), 0)
+        max_(
+            pd.Series(
+                where(person.MNTUS1 == 2, person.MNTUSAM1, person.MNTAMT1)
+            ).fillna(0),
+            0,
+        )
+        + max_(
+            pd.Series(
+                where(
+                    (person.MNTUS2 == 2)
+                    & ~(
+                        (year == 2018)
+                        & (
+                            person.household_id.isin(
+                                INVERTED_USUAL_AMOUNT_HOUSEHOLDS
+                            )
+                        )
+                    ),
+                    person.MNTUSAM2,
+                    person.MNTAMT2,
+                )
+            ).fillna(0),
+            0,
+        )
     ) * 52
 
     frs["miscellaneous_income"] = (
