@@ -14,7 +14,7 @@ import yaml
 
 TEST_YEAR = 2018
 # Variable pairs to check for similarity
-with open(REPO.parent / "tests" / "frs" / "variable_ukmod_map.yml") as f:
+with open(REPO / "tests" / "frs" / "variable_ukmod_map.yml") as f:
     metadata = yaml.load(f)
 
 MAX_REL_ERROR = 0.05
@@ -67,12 +67,15 @@ def test_quantile(variable, quantile):
     result_quantile = result[result > 0].quantile(quantile)
     target_quantile = target[target > 0].quantile(quantile)
 
+    abs_error = abs(result_quantile - target_quantile)
+    rel_error = abs(result_quantile / target_quantile - 1)
+
     assert (
-        abs(result_quantile - target_quantile)
-        < test_params["min_quantile_abs_error"]
-        or abs(result_quantile / target_quantile - 1)
-        < test_params["max_quantile_rel_error"]
+        abs_error < test_params["min_quantile_abs_error"]
+        or rel_error < test_params["max_quantile_rel_error"]
     )
+
+    return result_quantile, target_quantile
 
 
 @pytest.mark.parametrize("variable", metadata.keys())
@@ -83,6 +86,8 @@ def test_aggregate(variable):
 
     assert abs(result / target - 1) < test_params["max_rel_error"]
 
+    return result, target
+
 
 @pytest.mark.parametrize("variable", metadata.keys())
 def test_nonzero_count(variable):
@@ -91,6 +96,8 @@ def test_nonzero_count(variable):
     target = (ukmod[test_params["ukmod"]] > 0).sum()
 
     assert abs(result / target - 1) < test_params["max_rel_error"]
+
+    return result, target
 
 
 @pytest.mark.parametrize("variable", metadata.keys())
@@ -101,9 +108,11 @@ def test_average_error_among_nonzero(variable):
         index=baseline.calc("household_id", period=TEST_YEAR).values,
     )
     target = ukmod_hh[test_params["ukmod"]]
-    error = (result / target - 1)[target > 0].abs()
+    mean_error = (result / target - 1)[target > 0].abs().mean()
 
-    assert error.mean() < test_params["max_mean_rel_error"]
+    assert mean_error < test_params["max_mean_rel_error"]
+
+    return mean_error
 
 
 @pytest.mark.parametrize("variable", metadata.keys())
@@ -114,6 +123,8 @@ def test_ukmod_nonzero_agreement(variable):
         index=baseline.calc("household_id", period=TEST_YEAR).values,
     )
     target = ukmod_hh[test_params["ukmod"]]
-    error = (result > 0) == (target == 0)
+    mean_error = ((result > 0) == (target == 0)).mean()
 
-    assert error.mean() < test_params["min_nonzero_agreement"]
+    assert mean_error < test_params["min_nonzero_agreement"]
+
+    return mean_error
