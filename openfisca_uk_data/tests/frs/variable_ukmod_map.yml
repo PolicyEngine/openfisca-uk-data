@@ -1,5 +1,6 @@
 age: dag
 employment_income: yem
+pension_income: ypp
 self_employment_income: yse
 tax_free_savings_income: yiynt
 capital_income: yiy

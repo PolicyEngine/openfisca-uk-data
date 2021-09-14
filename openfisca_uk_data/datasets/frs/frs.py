@@ -325,14 +325,10 @@ def add_market_income(
     frs["employment_income"] = person.INEARNS * 52
 
     frs["pension_income"] = (
-        pension.PENPAY[pension.PENPAY > 0].groupby(pension.person_id).sum()
-        + pension.PTAMT[pension.PTINC == 2][pension.PTAMT > 0]
-        .groupby(pension.person_id)
-        .sum()
-        + pension.POAMT[(pension.POINC == 2) | (pension.PENOTH == 1)][
-            pension.POAMT > 0
-        ]
-    ).reindex(index=person.index).fillna(0) * 52
+        (pension.PENPAY * (pension.PENPAY > 0)).groupby(pension.person_id).sum().reindex(index=person.index).fillna(0)
+        + (pension.PTAMT * ((pension.PTINC == 2) & (pension.PTAMT > 0))).groupby(pension.person_id).sum().reindex(index=person.index).fillna(0)
+        + (pension.POAMT * (((pension.POINC == 2) | (pension.PENOTH == 1)) & (pension.POAMT > 0))).groupby(pension.person_id).sum().reindex(index=person.index).fillna(0)
+    ) * 52
 
     # Add self-employed income (correcting one person in 2018)
     seincamt = (
