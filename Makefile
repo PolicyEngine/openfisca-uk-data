@@ -8,5 +8,5 @@ install:
 format:
 	black . -l 79
 test:
-	pytest openfisca_uk_data/tests
+	pytest openfisca_uk_data/tests -vv
 	jb build docs/book

@@ -1,5 +1,7 @@
 age: dag
 employment_income: yem
+SSP: bhlwk
+SMP: bmaer
 pension_income: ypp
 self_employment_income: yse
 tax_free_savings_income: yiynt
@@ -20,6 +22,8 @@ DLA_SC_reported: bdisc
 DLA_M_reported: bdimb
 IIDB_reported: bdiwi
 carers_allowance_reported: bcrdi
+ESA_income: bsa01
+ESA_contrib: bdict0218
 SDA_reported: bdisv
 AFCS_reported: boawr
 BSP_reported: bsuwd
@@ -34,7 +38,6 @@ incapacity_benefit_reported: bdict0118
 universal_credit_reported: bsauc
 PIP_M_reported: bdimbwa
 PIP_DL_reported: bdiscwa
-SSP_reported: bhlwk
 student_loans: bedsl
 student_payments: bedes
 council_tax_benefit_reported: bmu
@@ -48,5 +51,8 @@ rent: xhcrt
 mortgage_interest_repayment: xhcmomi
 mortgage_capital_repayment: xhcmomc
 private_pension_contributions: xpp
-water_and_sewerage_charges: xhcot
+occupational_pension_contributions: tpcpe
+water_and_sewerage_charges:
+  ukmod: xhcot
+  max_mean_rel_error: 0.055
 housing_service_charges: xhcsc

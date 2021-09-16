@@ -128,3 +128,12 @@ def test_ukmod_nonzero_agreement(variable):
     assert mean_error < test_params["min_nonzero_agreement"]
 
     return mean_error
+
+
+@pytest.mark.parametrize("variable", metadata.keys())
+def test_not_nan(variable):
+    assert (
+        ~baseline.calc(variable, period=TEST_YEAR, map_to="household")
+        .isna()
+        .any()
+    )

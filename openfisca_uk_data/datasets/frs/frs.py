@@ -71,6 +71,7 @@ class FRS:
         add_expenses(
             frs,
             person,
+            job,
             household,
             maintenance,
             mortgage,
@@ -118,6 +119,7 @@ def add_personal_variables(frs: h5py.File, person: DataFrame):
     frs["age"] = age
     frs["role"] = np.where(person.AGE80 == 0, "adult", "child").astype("S")
     frs["gender"] = np.where(person.SEX == 1, "MALE", "FEMALE").astype("S")
+    frs["hours_worked"] = person.TOTHOURS * 52
     frs["is_household_head"] = person.HRPID == 1
     frs["is_benunit_head"] = person.UPERSON == 1
     frs["marital_status"] = (
@@ -144,7 +146,7 @@ def add_personal_variables(frs: h5py.File, person: DataFrame):
     # Add education levels
     fted = person.FTED
     typeed2 = person.TYPEED2
-    frs["dec"] = np.select(
+    frs["current_education"] = np.select(
         [
             fted.isin((2, -1, 0)),
             typeed2 == 1,
@@ -282,7 +284,7 @@ def add_household_variables(frs: h5py.File, household: DataFrame):
             household.CTANNUAL.isna(), max_(CT_imputed, 0), household.CTANNUAL
         )
     )
-    frs["council_tax"] = council_tax
+    frs["council_tax"] = council_tax.fillna(0)
 
     frs["council_tax_band"] = (
         household.CTBAND.fillna(4)
@@ -325,9 +327,27 @@ def add_market_income(
     frs["employment_income"] = person.INEARNS * 52
 
     frs["pension_income"] = (
-        (pension.PENPAY * (pension.PENPAY > 0)).groupby(pension.person_id).sum().reindex(index=person.index).fillna(0)
-        + (pension.PTAMT * ((pension.PTINC == 2) & (pension.PTAMT > 0))).groupby(pension.person_id).sum().reindex(index=person.index).fillna(0)
-        + (pension.POAMT * (((pension.POINC == 2) | (pension.PENOTH == 1)) & (pension.POAMT > 0))).groupby(pension.person_id).sum().reindex(index=person.index).fillna(0)
+        (pension.PENPAY * (pension.PENPAY > 0))
+        .groupby(pension.person_id)
+        .sum()
+        .reindex(index=person.index)
+        .fillna(0)
+        + (pension.PTAMT * ((pension.PTINC == 2) & (pension.PTAMT > 0)))
+        .groupby(pension.person_id)
+        .sum()
+        .reindex(index=person.index)
+        .fillna(0)
+        + (
+            pension.POAMT
+            * (
+                ((pension.POINC == 2) | (pension.PENOTH == 1))
+                & (pension.POAMT > 0)
+            )
+        )
+        .groupby(pension.person_id)
+        .sum()
+        .reindex(index=person.index)
+        .fillna(0)
     ) * 52
 
     # Add self-employed income (correcting one person in 2018)
@@ -502,6 +522,43 @@ def add_benefit_income(
             * 52
         )
 
+    frs["JSA_contrib_reported"] = (
+        benefits.BENAMT[benefits.VAR2.isin((1, 3))][benefits.BENEFIT == 14]
+        .fillna(0)
+        .groupby(benefits.person_id)
+        .sum()
+        .reindex(index=person.index)
+        .fillna(0)
+        * 52
+    )
+    frs["JSA_income_reported"] = (
+        benefits.BENAMT[benefits.VAR2.isin((2, 4))][benefits.BENEFIT == 14]
+        .fillna(0)
+        .groupby(benefits.person_id)
+        .sum()
+        .reindex(index=person.index)
+        .fillna(0)
+        * 52
+    )
+    frs["ESA_contrib_reported"] = (
+        benefits.BENAMT[benefits.VAR2.isin((1, 3))][benefits.BENEFIT == 16]
+        .fillna(0)
+        .groupby(benefits.person_id)
+        .sum()
+        .reindex(index=person.index)
+        .fillna(0)
+        * 52
+    )
+    frs["ESA_income_reported"] = (
+        benefits.BENAMT[benefits.VAR2.isin((2, 4))][benefits.BENEFIT == 16]
+        .fillna(0)
+        .groupby(benefits.person_id)
+        .sum()
+        .reindex(index=person.index)
+        .fillna(0)
+        * 52
+    )
+
     frs["BSP_reported"] = (
         benefits.BENAMT[benefits.BENEFIT.isin((6, 9))]
         .groupby(benefits.person_id)
@@ -516,7 +573,8 @@ def add_benefit_income(
         np.array(frs["winter_fuel_allowance_reported"]) / 52
     )
 
-    frs["SSP_reported"] = person.SSPADJ * 52
+    frs["SSP"] = person.SSPADJ * 52
+    frs["SMP"] = person.SMPADJ * 52
 
     frs["student_loans"] = person.TUBORR
 
@@ -536,6 +594,7 @@ def add_benefit_income(
 def add_expenses(
     frs: h5py.File,
     person: DataFrame,
+    job: DataFrame,
     household: DataFrame,
     maintenance: DataFrame,
     mortgage: DataFrame,
@@ -572,8 +631,8 @@ def add_expenses(
         )
         * 52
     )
-    frs["rent"] = household.HHRENT * 52
-    frs["mortgage_interest_repayment"] = household.MORTINT * 52
+    frs["rent"] = household.HHRENT.fillna(0) * 52
+    frs["mortgage_interest_repayment"] = household.MORTINT.fillna(0) * 52
     mortgage_capital = np.where(
         mortgage.RMORT == 1, mortgage.RMAMT, mortgage.BORRAMT
     )
@@ -603,11 +662,11 @@ def add_expenses(
         .clip(0, pen_prov.PENAMT.quantile(0.95))
         * 52
     )
-    frs["employer_pension_contributions"] = (
-        pen_prov.PENAMT[pen_prov.STEMPPEN.isin((1, 2, 3, 4))]
-        .groupby(pen_prov.person_id)
+    frs["occupational_pension_contributions"] = (
+        job.DEDUC1.fillna(0)
+        .groupby(job.person_id)
         .sum()
-        .reindex(person.index)
+        .reindex(index=person.index)
         .fillna(0)
         * 52
     )
@@ -622,14 +681,16 @@ def add_expenses(
         * 52
     )
     frs["water_and_sewerage_charges"] = (
-        np.where(
-            household.GVTREGNO == 12,
-            household.CSEWAMT + household.CWATAMTD,
-            household.WATSEWRT,
-        )
+        pd.Series(
+            np.where(
+                household.GVTREGNO == 12,
+                household.CSEWAMT + household.CWATAMTD,
+                household.WATSEWRT,
+            )
+        ).fillna(0)
         * 52
     )
 
 
 def add_benunit_variables(frs: h5py.File, benunit: DataFrame):
-    frs["benunit_rent"] = benunit.BURENT
+    frs["benunit_rent"] = benunit.BURENT * 52
