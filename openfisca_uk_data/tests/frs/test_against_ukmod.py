@@ -11,6 +11,7 @@ from microdf import MicroDataFrame
 from itertools import product
 from functools import partial
 import yaml
+import h5py
 
 TEST_YEAR = 2018
 # Variable pairs to check for similarity
@@ -31,6 +32,7 @@ if TEST_YEAR not in RawFRS.years:
 # Run the dataset generation and load test data
 
 FRS.generate(TEST_YEAR)
+
 baseline = Microsimulation(dataset=FRS)
 ukmod = UKMODInput.load(TEST_YEAR, "person")
 ukmod_hh = ukmod.groupby("household_id").sum()
@@ -128,12 +130,3 @@ def test_ukmod_nonzero_agreement(variable):
     assert mean_error < test_params["min_nonzero_agreement"]
 
     return mean_error
-
-
-@pytest.mark.parametrize("variable", metadata.keys())
-def test_not_nan(variable):
-    assert (
-        ~baseline.calc(variable, period=TEST_YEAR, map_to="household")
-        .isna()
-        .any()
-    )
