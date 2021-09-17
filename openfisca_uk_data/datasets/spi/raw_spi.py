@@ -8,9 +8,8 @@ import pandas as pd
 @dataset
 class RawSPI:
     name = "raw_spi"
-    model = UK
 
-    def generate(year, zipfile) -> None:
+    def generate(zipfile, year) -> None:
         folder = Path(zipfile)
         year = str(year)
         if not folder.exists():
@@ -30,6 +29,7 @@ class RawSPI:
                     df = pd.read_csv(
                         filepath, delimiter="\t", low_memory=False
                     ).apply(pd.to_numeric, errors="coerce")
+                    df.columns = df.columns.str.upper()
                     file[table_name] = df
             else:
                 raise FileNotFoundError("Could not find any TAB files.")

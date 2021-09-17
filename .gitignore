@@ -5,3 +5,5 @@ build/
 dist/
 openfisca_uk_data.egg-info/
 .vscode/
+docs/book/_build/
+**/.ipynb_checkpoints

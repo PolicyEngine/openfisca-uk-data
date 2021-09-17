@@ -7,13 +7,14 @@ def main():
         ds.name: ds
         for ds in (
             RawFRS,
-            BaseFRS,
+            UKMODInput,
+            UKMODOutput,
             FRS,
             SynthFRS,
             RawSPI,
-            BaseSPI,
             SPI,
             FRS_SPI_Adjusted,
+            FRS_WAS_Imputation,
         )
     }
     parser = ArgumentParser(

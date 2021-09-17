@@ -1,42 +1,12 @@
-from openfisca_uk_data.datasets.spi.base_spi import BaseSPI
 from openfisca_uk_data.datasets.spi.raw_spi import RawSPI
 from openfisca_core.model_api import *
-from openfisca_uk_data.datasets.spi.base_spi.model_input_variables import (
-    get_input_variables,
-)
 from openfisca_uk_data.utils import *
+import pandas as pd
+from pandas import DataFrame
 import h5py
 
-
-def from_FRS(year: int = 2018):
-    from openfisca_uk import CountryTaxBenefitSystem
-
-    system = CountryTaxBenefitSystem()
-    variables = []
-    for variable in get_input_variables():
-        try:
-            variables += [type(system.variables[variable.__name__])]
-        except:
-            variables += [variable]
-    for i in range(len(variables)):
-        variable = variables[i]
-        if variable.__name__ in LABOUR_INCOME_VARIABLES:
-            variables[i] = uprated(
-                "uprating.labour_income", from_year=year + 1
-            )(variable)
-        elif variable.__name__ in CAPITAL_INCOME_VARIABLES:
-            variables[i] = uprated(
-                "uprating.labour_income", from_year=year + 1
-            )(variable)
-        else:
-            variables[i] = uprated(from_year=year + 1)(variable)
-
-    class reform(Reform):
-        def apply(self):
-            for var in variables:
-                self.update_variable(var)
-
-    return reform
+max_ = np.maximum
+where = np.where
 
 
 @dataset
@@ -44,39 +14,70 @@ class SPI:
     name = "spi"
     model = UK
 
-    def generate(year):
-        base_frs_years = BaseSPI().years
-        if len(base_frs_years) == 0:
-            raw_frs_years = RawSPI().years
-            if len(raw_frs_years) == 0:
-                raise Exception("No FRS microdata to generate from")
-            else:
-                base_frs_year = max(raw_frs_years)
-        else:
-            base_frs_year = max(base_frs_years)
+    def generate(year: int) -> None:
+        """Generates the SPI-based input dataset for OpenFisca-UK.
 
-        from openfisca_uk import Microsimulation
+        Args:
+                year (int): The year to generate for (uses the raw SPI from this year)
+        """
 
-        base_frs_sim = Microsimulation(dataset=BaseSPI, year=base_frs_year)
-        person_vars, benunit_vars, household_vars = [
-            [
-                var.__name__
-                for var in get_input_variables()
-                if var.entity.key == entity
-            ]
-            for entity in ("person", "benunit", "household")
-        ]
-        person_vars += [
-            "P_person_id",
-            "P_benunit_id",
-            "P_household_id",
-            "P_role",
-        ]
-        benunit_vars += ["B_benunit_id"]
-        household_vars += ["H_household_id"]
-        with h5py.File(SPI.file(year), mode="w") as f:
-            for year in range(int(year), int(year) + 10):
-                for variable in person_vars + benunit_vars + household_vars:
-                    f[f"{variable}/{year}"] = base_frs_sim.calc(
-                        variable, year
-                    ).values
+        main = RawSPI.load(year, "main").fillna(0)
+        spi = h5py.File(SPI.file(year), mode="w")
+
+        add_id_variables(spi, main)
+        add_age(spi, main)
+        add_incomes(spi, main)
+
+        # Generate OpenFisca-UK variables and save
+        spi.close()
+
+
+def add_id_variables(spi: h5py.File, main: DataFrame):
+    spi["person_id"] = main.index
+    spi["person_benunit_id"] = main.index
+    spi["person_household_id"] = main.index
+    spi["benunit_id"] = main.index
+    spi["household_id"] = main.index
+    spi["role"] = np.array(["adult"] * len(main)).astype("S")
+
+
+def add_age(spi: h5py.File, main: DataFrame):
+    LOWER = np.array([16, 25, 35, 45, 55, 65, 75])
+    UPPER = np.array([25, 35, 45, 55, 65, 75, 80])
+    age_range = main.AGERANGE - 1
+    spi["age"] = LOWER[age_range] + np.random.rand(len(main)) * (
+        UPPER[age_range] - LOWER[age_range]
+    )
+
+
+def add_incomes(spi: h5py.File, main: DataFrame):
+    RENAMES = dict(
+        pension_income="PENSION",
+        self_employment_income="PROFITS",
+        property_income="INCPROP",
+        savings_interest_income="INCBBS",
+        dividend_income="DIVIDENDS",
+        blind_persons_allowance="BPADUE",
+        married_couples_allowance="MCAS",
+        gift_aid="GIFTAID",
+        capital_allowances="CAPALL",
+        deficiency_relief="DEFICIEN",
+        covenanted_payments="COVNTS",
+        charitable_investment_gifts="GIFTINV",
+        employment_expenses="EPB",
+        other_deductions="MOTHDED",
+        pension_contributions="PENSRLF",
+        person_weight="FACT",
+        benunit_weight="FACT",
+        household_weight="FACT",
+    )
+    spi["pays_scottish_income_tax"] = main.SCOT_TXP == 1
+    spi["employment_income"] = main[["PAY", "EPB", "TAXTERM"]].sum(axis=1)
+    spi["social_security_income"] = main[
+        ["SRP", "INCPBEN", "UBISJA", "OSSBEN"]
+    ].sum(axis=1)
+    spi["miscellaneous_income"] = main[
+        ["OTHERINV", "OTHERINC", "MOTHINC"]
+    ].sum(axis=1)
+    for var, key in RENAMES.items():
+        spi[var] = main[key]

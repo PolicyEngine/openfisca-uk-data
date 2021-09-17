@@ -15,7 +15,7 @@ import warnings
 class RawFRS:
     name = "raw_frs"
 
-    def generate(year, zipfile) -> None:
+    def generate(zipfile, year) -> None:
         folder = Path(zipfile)
         year = str(year)
 
@@ -45,14 +45,23 @@ class RawFRS:
                     df = pd.read_csv(
                         filepath, delimiter="\t", low_memory=False
                     ).apply(pd.to_numeric, errors="coerce")
+                    df.columns = df.columns.str.upper()
                     if "PERSON" in df.columns:
                         df["person_id"] = (
-                            df.sernum * 1e2 + df.BENUNIT * 1e1 + df.PERSON
-                        )
+                            df.SERNUM * 1e2 + df.BENUNIT * 1e1 + df.PERSON
+                        ).astype(int)
                     if "BENUNIT" in df.columns:
-                        df["benunit_id"] = df.sernum * 1e2 + df.BENUNIT * 1e1
-                    if "sernum" in df.columns:
-                        df["household_id"] = df.sernum * 1e2
+                        df["benunit_id"] = (
+                            df.SERNUM * 1e2 + df.BENUNIT * 1e1
+                        ).astype(int)
+                    if "SERNUM" in df.columns:
+                        df["household_id"] = (df.SERNUM * 1e2).astype(int)
+                    if table_name in ("adult", "child"):
+                        df.set_index("person_id", inplace=True)
+                    elif table_name == "benunit":
+                        df.set_index("benunit_id", inplace=True)
+                    elif table_name == "househol":
+                        df.set_index("household_id", inplace=True)
                     file[table_name] = df
         else:
             raise FileNotFoundError("Could not find the TAB files.")
