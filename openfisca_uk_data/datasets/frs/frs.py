@@ -376,7 +376,7 @@ def add_market_income(
 
     frs["tax_free_savings_income"] = (
         sum_to_entity(
-            account.ACCIND[account.ACCINT == 21],
+            account.ACCINT * (account.ACCOUNT == 21),
             account.person_id,
             person.index,
         )
@@ -387,7 +387,7 @@ def add_market_income(
             (
                 account.ACCINT
                 * np.where(account.ACCTAX == 1, INVERTED_BASIC_RATE, 1)
-            )[account.ACCOUNT.isin((1, 3, 5, 27, 28))],
+            )* (account.ACCOUNT.isin((1, 3, 5, 27, 28))),
             account.person_id,
             person.index,
         )
@@ -401,10 +401,10 @@ def add_market_income(
             (
                 account.ACCINT
                 * np.where(account.INVTAX == 1, INVERTED_BASIC_RATE, 1)
-            )[
+            ) * (
                 ((account.ACCOUNT == 6) & (account.INVTAX == 1))  # GGES
                 | account.ACCOUNT.isin((7, 8))  # Stocks/shares/UITs
-            ],
+            ),
             account.person_id,
             person.index,
         )
@@ -450,16 +450,16 @@ def add_market_income(
         where(use_DWP_usual_amount, person.MNTUSAM2, person.MNTAMT2)
     )
     frs["maintenance_income"] = (
-        max_(0, maintenance_to_self + maintenance_from_DWP, 0) * 52
+        max_(0, maintenance_to_self + maintenance_from_DWP) * 52
     )
 
     odd_job_income = sum_to_entity(
-        oddjob.OJAMT[oddjob.OJNOW == 1], oddjob.person_id, person.index
+        oddjob.OJAMT * (oddjob.OJNOW == 1), oddjob.person_id, person.index
     )
 
     frs["miscellaneous_income"] = (
         odd_job_income
-        + person[["ALLPAY2", "ROYYR2", "ROYYR3", "CHAMTERN", "CHAMTTST"]].sum(
+        + person[["ALLPAY2", "ROYYR2", "ROYYR3", "ROYYR4", "CHAMTERN", "CHAMTTST"]].sum(
             axis=1
         )
     ) * 52
@@ -511,21 +511,15 @@ def add_benefit_income(
     )
 
     for benefit, code in BENEFIT_CODES.items():
-        frs[benefit + "_reported"] = (
-            benefits.BENAMT[benefits.BENEFIT == code]
-            .groupby(benefits.person_id)
-            .sum()
-            .reindex(index=person.index)
-            .fillna(0)
-            .values
-            * 52
-        )
+        frs[benefit + "_reported"] = sum_to_entity(
+            benefits.BENAMT * (benefits.BENEFIT == code),
+            benefits.person_id,
+            person.index
+        ) * 52
 
     frs["JSA_contrib_reported"] = (
         sum_to_entity(
-            benefits.BENAMT[benefits.VAR2.isin((1, 3))][
-                benefits.BENEFIT == 14
-            ],
+            benefits.BENAMT * (benefits.VAR2.isin((1, 3))) * (benefits.BENEFIT == 14),
             benefits.person_id,
             person.index,
         )
@@ -533,9 +527,7 @@ def add_benefit_income(
     )
     frs["JSA_income_reported"] = (
         sum_to_entity(
-            benefits.BENAMT[benefits.VAR2.isin((2, 4))][
-                benefits.BENEFIT == 14
-            ],
+            benefits.BENAMT * (benefits.VAR2.isin((2, 4))) * (benefits.BENEFIT == 14),
             benefits.person_id,
             person.index,
         )
@@ -543,9 +535,7 @@ def add_benefit_income(
     )
     frs["ESA_contrib_reported"] = (
         sum_to_entity(
-            benefits.BENAMT[benefits.VAR2.isin((1, 3))][
-                benefits.BENEFIT == 16
-            ],
+            benefits.BENAMT * (benefits.VAR2.isin((1, 3))) * (benefits.BENEFIT == 16),
             benefits.person_id,
             person.index,
         )
@@ -553,9 +543,7 @@ def add_benefit_income(
     )
     frs["ESA_income_reported"] = (
         sum_to_entity(
-            benefits.BENAMT[benefits.VAR2.isin((2, 4))][
-                benefits.BENEFIT == 16
-            ],
+            benefits.BENAMT * (benefits.VAR2.isin((2, 4))) * (benefits.BENEFIT == 16),
             benefits.person_id,
             person.index,
         )
@@ -564,7 +552,7 @@ def add_benefit_income(
 
     frs["BSP_reported"] = (
         sum_to_entity(
-            benefits.BENAMT[benefits.BENEFIT.isin((6, 9))],
+            benefits.BENAMT * (benefits.BENEFIT.isin((6, 9))),
             benefits.person_id,
             person.index,
         )
@@ -647,7 +635,7 @@ def add_expenses(
 
     frs["childcare_expenses"] = (
         sum_to_entity(
-            childcare.CHAMT[childcare.COST == 1][childcare.REGISTRD == 1],
+            childcare.CHAMT * (childcare.COST == 1) * (childcare.REGISTRD == 1),
             childcare.person_id,
             person.index,
         )
@@ -657,13 +645,13 @@ def add_expenses(
     frs["private_pension_contributions"] = (
         sum_to_entity(
             pen_prov.PENAMT[pen_prov.STEMPPEN.isin((5, 6))],
-            childcare.person_id,
+            pen_prov.person_id,
             person.index,
-        )
+        ).clip(0, pen_prov.PENAMT.quantile(0.95))
         * 52
     )
     frs["occupational_pension_contributions"] = (
-        sum_to_entity(job.DEDUC1.fillna(0), childcare.person_id, person.index)
+        sum_to_entity(job.DEDUC1.fillna(0), job.person_id, person.index)
         * 52
     )
 
