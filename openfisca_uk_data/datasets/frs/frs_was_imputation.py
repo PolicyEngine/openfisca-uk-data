@@ -66,7 +66,7 @@ def impute_land(was_df: pd.DataFrame, year: int) -> pd.Series:
         "savings_interest_income",
         "people",
         "net_income",
-        "household_weight"
+        "household_weight",
     ]
 
     frs = sim.df(frs_cols, map_to="household", period=year)
@@ -80,7 +80,7 @@ def impute_land(was_df: pd.DataFrame, year: int) -> pd.Series:
         x_new=frs[TRAIN_COLS],
         sample_weight_train=was.weight,
         new_weight=frs.household_weight,
-        target=mdf.weighted_sum(was, "est_land", "weight")
+        target=mdf.weighted_sum(was, "est_land", "weight"),
     )
 
 
