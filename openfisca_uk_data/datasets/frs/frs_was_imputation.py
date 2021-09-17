@@ -20,7 +20,7 @@ class FRS_WAS_Imputation:
         frs = FRS.load(year)
         for variable in tuple(frs.keys()):
             frs_was[variable] = np.array(frs[variable][...])
-        frs_was["land_value"] = pred_land.values
+        frs_was["land_value"] = pred_land
         frs_was.close()
         frs.close()
 
@@ -59,15 +59,6 @@ def impute_land(was_df: pd.DataFrame, year: int) -> pd.Series:
         "est_land",  # Total wealth.
     ]
 
-    # TODO: Test imputation quantiles on a hold out sample.
-    train, test = sklearn.model_selection.train_test_split(was)
-    test["pred_land"] = si.rf_impute(
-        x_train=train[TRAIN_COLS],
-        y_train=train[IMPUTE_COLS],
-        x_new=test[TRAIN_COLS],
-        sample_weight_train=train.weight,
-    )
-
     # FRS has investment income split between dividend and savings interest.
     frs_cols = [i for i in TRAIN_COLS if i != "investment_income"]
     frs_cols += [
@@ -75,29 +66,22 @@ def impute_land(was_df: pd.DataFrame, year: int) -> pd.Series:
         "savings_interest_income",
         "people",
         "net_income",
+        "household_weight"
     ]
-    frs_cols
 
     frs = sim.df(frs_cols, map_to="household", period=year)
     frs["investment_income"] = (
         frs.savings_interest_income + frs.dividend_income
     )
 
-    frs["pred_land"] = si.rf_impute(
+    return si.rf_impute(
         x_train=was[TRAIN_COLS],
         y_train=was[IMPUTE_COLS],
         x_new=frs[TRAIN_COLS],
         sample_weight_train=was.weight,
+        new_weight=frs.household_weight,
+        target=mdf.weighted_sum(was, "est_land", "weight")
     )
-
-    # Adjust the imputed land values to match the actual land values.
-    total_initial_pred_land = frs.pred_land.sum()
-
-    total_was_land = mdf.weighted_sum(was, "est_land", "weight")
-
-    frs.pred_land *= total_was_land / total_initial_pred_land
-
-    return frs.pred_land
 
 
 def process_was(was_file: str) -> pd.DataFrame:
