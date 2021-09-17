@@ -212,7 +212,7 @@ def add_household_variables(frs: h5py.File, household: DataFrame):
         {
             i: region
             for i, region in zip(
-                range(1, 13),
+                [1, 2] + list(range(4, 14)),
                 [
                     "NORTH_EAST",
                     "NORTH_WEST",

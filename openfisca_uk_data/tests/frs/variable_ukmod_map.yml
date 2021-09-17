@@ -22,7 +22,6 @@ DLA_SC_reported: bdisc
 DLA_M_reported: bdimb
 IIDB_reported: bdiwi
 carers_allowance_reported: bcrdi
-ESA_income: bsa01
 ESA_contrib: bdict0218
 SDA_reported: bdisv
 AFCS_reported: boawr
