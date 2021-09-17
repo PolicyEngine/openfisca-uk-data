@@ -33,7 +33,7 @@ if TEST_YEAR not in RawFRS.years:
 
 FRS.generate(TEST_YEAR)
 
-baseline = Microsimulation(dataset=FRS)
+baseline = Microsimulation(dataset=FRS, year=TEST_YEAR)
 ukmod = UKMODInput.load(TEST_YEAR, "person")
 ukmod_hh = ukmod.groupby("household_id").sum()
 ukmod = MicroDataFrame(ukmod, weights=ukmod.person_weight)
