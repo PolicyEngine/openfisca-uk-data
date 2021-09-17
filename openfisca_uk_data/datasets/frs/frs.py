@@ -24,7 +24,7 @@ class FRS:
         # Load raw FRS tables
         raw_frs_files = RawFRS.load(year)
         frs = h5py.File(FRS.file(year), mode="w")
-        tables = (
+        TABLES = (
             "adult",
             "child",
             "accounts",
@@ -53,7 +53,7 @@ class FRS:
             maintenance,
             mortgage,
             pen_prov,
-        ) = [raw_frs_files[table] for table in tables]
+        ) = [raw_frs_files[table] for table in TABLES]
         raw_frs_files.close()
 
         person = pd.concat([adult, child]).sort_index().fillna(0)
@@ -79,6 +79,43 @@ class FRS:
             pen_prov,
         )
         frs.close()
+
+
+def sum_to_entity(
+    values: pd.Series, foreign_key: pd.Series, primary_key
+) -> pd.Series:
+    """Sums values by joining foreign and primary keys.
+
+    Args:
+        values (pd.Series): The values in the non-entity table.
+        foreign_key (pd.Series): E.g. pension.person_id.
+        primary_key ([type]): E.g. person.index.
+
+    Returns:
+        pd.Series: A value for each person.
+    """
+    return values.groupby(foreign_key).sum().reindex(primary_key).fillna(0)
+
+
+def categorical(
+    values: pd.Series, default: int, left: list, right: list
+) -> pd.Series:
+    """Maps a categorical input to an output using given left and right arrays.
+
+    Args:
+        values (pd.Series): The input values.
+        default (int): A default value (to replace NaNs).
+        left (list): The left side of the map.
+        right (list): The right side of the map.
+
+    Returns:
+        pd.Series: The mapped values.
+    """
+    return (
+        values.fillna(default)
+        .map({i: j for i, j in zip(left, right)})
+        .astype("S")
+    )
 
 
 def add_id_variables(
@@ -122,25 +159,16 @@ def add_personal_variables(frs: h5py.File, person: DataFrame):
     frs["hours_worked"] = person.TOTHOURS * 52
     frs["is_household_head"] = person.HRPID == 1
     frs["is_benunit_head"] = person.UPERSON == 1
-    frs["marital_status"] = (
-        person.MARITAL.fillna(2)
-        .map(
-            {
-                i: status
-                for i, status in zip(
-                    range(1, 7),
-                    [
-                        "MARRIED",
-                        "SINGLE",
-                        "SINGLE",
-                        "WIDOWED",
-                        "SEPARATED",
-                        "DIVORCED",
-                    ],
-                )
-            }
-        )
-        .astype("S")
+    MARITAL = [
+        "MARRIED",
+        "SINGLE",
+        "SINGLE",
+        "WIDOWED",
+        "SEPARATED",
+        "DIVORCED",
+    ]
+    frs["marital_status"] = categorical(
+        person.MARITAL, 2, range(1, 7), MARITAL
     )
 
     # Add education levels
@@ -148,20 +176,36 @@ def add_personal_variables(frs: h5py.File, person: DataFrame):
     typeed2 = person.TYPEED2
     frs["current_education"] = np.select(
         [
-            fted.isin((2, -1, 0)),
-            typeed2 == 1,
-            typeed2.isin((2, 4))
-            | (typeed2.isin((3, 8)) & (age < 11))
-            | ((typeed2 == 0) & (fted == 1) & (age > 5) & (age < 11)),
-            typeed2.isin((5, 6))
-            | (typeed2.isin((3, 8)) & (age >= 11) & (age <= 16))
-            | ((typeed2 == 0) & (fted == 1) & (age <= 16)),
-            typeed2
+            fted.isin((2, -1, 0)),  # By default, not in education
+            typeed2 == 1,  # In pre-primary
+            typeed2.isin((2, 4))  # In primary, or...
+            | (
+                typeed2.isin((3, 8)) & (age < 11)
+            )  # special or private education (and under 11), or...
+            | (
+                (typeed2 == 0) & (fted == 1) & (age > 5) & (age < 11)
+            ),  # not given, full-time and between 5 and 11
+            typeed2.isin((5, 6))  # In secondary, or...
+            | (
+                typeed2.isin((3, 8)) & (age >= 11) & (age <= 16)
+            )  # special/private and meets age criteria, or...
+            | (
+                (typeed2 == 0) & (fted == 1) & (age <= 16)
+            ),  # not given, full-time and under 17
+            typeed2  # Non-advanced further education, or...
             == 7
-            | (typeed2.isin((3, 8)) & (age > 16))
-            | ((typeed2 == 0) & (fted == 1) & (age > 16)),
-            typeed2.isin((7, 8)) & (age >= 19),
-            typeed2 == 9 | ((typeed2 == 0) & (fted == 1) & (age >= 19)),
+            | (
+                typeed2.isin((3, 8)) & (age > 16)
+            )  # special/private and meets age criteria, or...
+            | (
+                (typeed2 == 0) & (fted == 1) & (age > 16)
+            ),  # not given, full-time and over 16
+            typeed2.isin((7, 8)) & (age >= 19),  # In post-secondary
+            typeed2
+            == 9
+            | (
+                (typeed2 == 0) & (fted == 1) & (age >= 19)
+            ),  # In tertiary, or meets age condition
         ],
         [
             "NOT_IN_EDUCATION",
@@ -175,27 +219,22 @@ def add_personal_variables(frs: h5py.File, person: DataFrame):
     ).astype("S")
 
     # Add employment status
-    frs["employment_status"] = person.EMPSTATI.map(
-        {
-            i: status
-            for i, status in zip(
-                range(12),
-                [
-                    "CHILD",
-                    "FT_EMPLOYED",
-                    "PT_EMPLOYED",
-                    "FT_SELF_EMPLOYED",
-                    "PT_SELF_EMPLOYED",
-                    "UNEMPLOYED",
-                    "RETIRED",
-                    "STUDENT",
-                    "CARER",
-                    "LONG_TERM_DISABLED",
-                    "SHORT_TERM_DISABLED",
-                ],
-            )
-        }
-    ).astype("S")
+    EMPLOYMENTS = [
+        "CHILD",
+        "FT_EMPLOYED",
+        "PT_EMPLOYED",
+        "FT_SELF_EMPLOYED",
+        "PT_SELF_EMPLOYED",
+        "UNEMPLOYED",
+        "RETIRED",
+        "STUDENT",
+        "CARER",
+        "LONG_TERM_DISABLED",
+        "SHORT_TERM_DISABLED",
+    ]
+    frs["employment_status"] = categorical(
+        person.EMPSTATI, 1, range(12), EMPLOYMENTS
+    )
 
 
 def add_household_variables(frs: h5py.File, household: DataFrame):
@@ -208,65 +247,48 @@ def add_household_variables(frs: h5py.File, household: DataFrame):
     # Add region
     from openfisca_uk.variables.demographic.household import Region
 
-    frs["region"] = household.GVTREGNO.map(
-        {
-            i: region
-            for i, region in zip(
-                [1, 2] + list(range(4, 14)),
-                [
-                    "NORTH_EAST",
-                    "NORTH_WEST",
-                    "YORKSHIRE",
-                    "EAST_MIDLANDS",
-                    "WEST_MIDLANDS",
-                    "EAST_OF_ENGLAND",
-                    "LONDON",
-                    "SOUTH_EAST",
-                    "SOUTH_WEST",
-                    "SCOTLAND",
-                    "WALES",
-                    "NORTHERN_IRELAND",
-                ],
-            )
-        }
-    ).astype("S")
-
-    frs["tenure_type"] = household.PTENTYP2.map(
-        {
-            i: tenure
-            for i, tenure in zip(
-                range(1, 7),
-                [
-                    "RENT_FROM_COUNCIL",
-                    "RENT_FROM_HA",
-                    "RENT_PRIVATELY",
-                    "RENT_PRIVATELY",
-                    "OWNED_OUTRIGHT",
-                    "OWNED_WITH_MORTGAGE",
-                ],
-            )
-        }
-    ).astype("S")
-
+    REGIONS = [
+        "NORTH_EAST",
+        "NORTH_WEST",
+        "YORKSHIRE",
+        "EAST_MIDLANDS",
+        "WEST_MIDLANDS",
+        "EAST_OF_ENGLAND",
+        "LONDON",
+        "SOUTH_EAST",
+        "SOUTH_WEST",
+        "SCOTLAND",
+        "WALES",
+        "NORTHERN_IRELAND",
+        "UNKNOWN",
+    ]
+    frs["region"] = categorical(
+        household.GVTREGNO, 14, [1, 2] + list(range(4, 15)), REGIONS
+    )
+    TENURES = [
+        "RENT_FROM_COUNCIL",
+        "RENT_FROM_HA",
+        "RENT_PRIVATELY",
+        "RENT_PRIVATELY",
+        "OWNED_OUTRIGHT",
+        "OWNED_WITH_MORTGAGE",
+    ]
+    frs["tenure_type"] = categorical(
+        household.PTENTYP2, 3, range(1, 7), TENURES
+    )
     frs["num_bedrooms"] = household.BEDROOM6
-
-    frs["accommodation_type"] = household.TYPEACC.map(
-        {
-            i: accommodation
-            for i, accommodation in zip(
-                range(1, 8),
-                [
-                    "HOUSE_DETACHED",
-                    "HOUSE_SEMI_DETACHED",
-                    "HOUSE_TERRACED",
-                    "FLAT",
-                    "CONVERTED_HOUSE",
-                    "MOBILE",
-                    "OTHER",
-                ],
-            )
-        }
-    ).astype("S")
+    ACCOMMODATIONS = [
+        "HOUSE_DETACHED",
+        "HOUSE_SEMI_DETACHED",
+        "HOUSE_TERRACED",
+        "FLAT",
+        "CONVERTED_HOUSE",
+        "MOBILE",
+        "OTHER",
+    ]
+    frs["accommodation_type"] = categorical(
+        household.TYPEACC, 1, range(1, 8), ACCOMMODATIONS
+    )
 
     # Impute Council Tax
 
@@ -285,21 +307,11 @@ def add_household_variables(frs: h5py.File, household: DataFrame):
         )
     )
     frs["council_tax"] = council_tax.fillna(0)
-
-    frs["council_tax_band"] = (
-        household.CTBAND.fillna(4)
-        .map(
-            {
-                i: band
-                for i, band in zip(
-                    range(1, 10), ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
-                )
-            }
-        )
-        .astype("S")
+    BANDS = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
+    # Band 1 is the most common
+    frs["council_tax_band"] = categorical(
+        household.CTBAND, 1, range(1, 10), BANDS
     )
-
-    # Add housing costs
 
 
 def add_market_income(
@@ -326,87 +338,88 @@ def add_market_income(
     """
     frs["employment_income"] = person.INEARNS * 52
 
+    pension_payment = sum_to_entity(
+        pension.PENPAY * (pension.PENPAY > 0), pension.person_id, person.index
+    )
+    pension_tax_paid = sum_to_entity(
+        (pension.PTAMT * ((pension.PTINC == 2) & (pension.PTAMT > 0))),
+        pension.person_id,
+        person.index,
+    )
+    pension_deductions_removed = sum_to_entity(
+        pension.POAMT
+        * (
+            ((pension.POINC == 2) | (pension.PENOTH == 1))
+            & (pension.POAMT > 0)
+        ),
+        pension.person_id,
+        person.index,
+    )
+
     frs["pension_income"] = (
-        (pension.PENPAY * (pension.PENPAY > 0))
-        .groupby(pension.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
-        + (pension.PTAMT * ((pension.PTINC == 2) & (pension.PTAMT > 0)))
-        .groupby(pension.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
-        + (
-            pension.POAMT
-            * (
-                ((pension.POINC == 2) | (pension.PENOTH == 1))
-                & (pension.POAMT > 0)
-            )
-        )
-        .groupby(pension.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
+        pension_payment + pension_tax_paid + pension_deductions_removed
     ) * 52
 
     # Add self-employed income (correcting one person in 2018)
-    seincamt = (
-        (job.SEINCAMT.groupby(job.person_id).sum())
-        .reindex(person.index)
-        .fillna(0)
-    )
+    INCORRECT_VALUES_PERSON_ID = 806911
+    seincamt = sum_to_entity(job.SEINCAMT, job.person_id, person.index)
     frs["self_employment_income"] = (
         np.where(
-            (year == 2018) & (person.index == 806911),
+            (year == 2018) & (person.index == INCORRECT_VALUES_PERSON_ID),
             seincamt,
             person.SEINCAM2,
         )
         * 52
     )
 
+    INVERTED_BASIC_RATE = 1.25
+
     frs["tax_free_savings_income"] = (
-        account.ACCINT[account.ACCOUNT == 21]
-        .groupby(account.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
+        sum_to_entity(
+            account.ACCIND[account.ACCINT == 21],
+            account.person_id,
+            person.index,
+        )
+        * 52
+    )
+    taxable_savings_interest = (
+        sum_to_entity(
+            (
+                account.ACCINT
+                * np.where(account.ACCTAX == 1, INVERTED_BASIC_RATE, 1)
+            )[account.ACCOUNT.isin((1, 3, 5, 27, 28))],
+            account.person_id,
+            person.index,
+        )
         * 52
     )
     frs["savings_interest_income"] = (
-        (account.ACCINT * np.where(account.ACCTAX == 1, 1.25, 1))[
-            account.ACCOUNT.isin((1, 3, 5, 27, 28))
-        ]
-    ).groupby(account.person_id).sum().reindex(index=person.index).fillna(
-        0
-    ) * 52 + frs[
-        "tax_free_savings_income"
-    ][
-        ...
-    ]
+        taxable_savings_interest + frs["tax_free_savings_income"][...]
+    )
     frs["dividend_income"] = (
-        account.ACCINT * np.where(account.INVTAX == 1, 1.25, 1)
-    )[
-        ((account.ACCOUNT == 6) & (account.INVTAX == 1))
-        | account.ACCOUNT.isin((7, 8))
-    ].groupby(
-        account.person_id
-    ).sum().reindex(
-        index=person.index
-    ).fillna(
-        0
-    ) * 52
-    is_head = person.HRPID == 1
-    frs["property_income"] = (
-        is_head
-        * (
-            pd.Series(
-                (household.TENTYP2.isin((5, 6)) * household.SUBRENT)[
-                    person.household_id
-                ].values,
-                index=person.index,
-            ).fillna(0)
+        sum_to_entity(
+            (
+                account.ACCINT
+                * np.where(account.INVTAX == 1, INVERTED_BASIC_RATE, 1)
+            )[
+                ((account.ACCOUNT == 6) & (account.INVTAX == 1))  # GGES
+                | account.ACCOUNT.isin((7, 8))  # Stocks/shares/UITs
+            ],
+            account.person_id,
+            person.index,
         )
+        * 52
+    )
+    is_head = person.HRPID == 1
+    household_property_income = (
+        household.TENTYP2.isin((5, 6)) * household.SUBRENT
+    )  # Owned and subletting
+    persons_household_property_income = pd.Series(
+        household_property_income[person.household_id].values,
+        index=person.index,
+    ).fillna(0)
+    frs["property_income"] = (
+        is_head * persons_household_property_income
         + person.CVPAY
         + person.ROYYR1
     ) * 52
@@ -423,46 +436,32 @@ def add_market_income(
         1901400,
         388000,
     )
-
+    maintenance_to_self = max_(
+        pd.Series(
+            where(person.MNTUS1 == 2, person.MNTUSAM1, person.MNTAMT1)
+        ).fillna(0),
+        0,
+    )
+    use_DWP_usual_amount = (person.MNTUS2 == 2) & ~(
+        (year == 2018)
+        & (person.household_id.isin(INVERTED_USUAL_AMOUNT_HOUSEHOLDS))
+    )
+    maintenance_from_DWP = pd.Series(
+        where(use_DWP_usual_amount, person.MNTUSAM2, person.MNTAMT2)
+    )
     frs["maintenance_income"] = (
-        max_(
-            pd.Series(
-                where(person.MNTUS1 == 2, person.MNTUSAM1, person.MNTAMT1)
-            ).fillna(0),
-            0,
-        )
-        + max_(
-            pd.Series(
-                where(
-                    (person.MNTUS2 == 2)
-                    & ~(
-                        (year == 2018)
-                        & (
-                            person.household_id.isin(
-                                INVERTED_USUAL_AMOUNT_HOUSEHOLDS
-                            )
-                        )
-                    ),
-                    person.MNTUSAM2,
-                    person.MNTAMT2,
-                )
-            ).fillna(0),
-            0,
-        )
-    ) * 52
+        max_(0, maintenance_to_self + maintenance_from_DWP, 0) * 52
+    )
+
+    odd_job_income = sum_to_entity(
+        oddjob.OJAMT[oddjob.OJNOW == 1], oddjob.person_id, person.index
+    )
 
     frs["miscellaneous_income"] = (
-        oddjob.OJAMT[oddjob.OJNOW == 1]
-        .groupby(oddjob.person_id)
-        .sum()
-        .reindex(person.index)
-        .fillna(0)
-        + person.ALLPAY2
-        + person.ROYYR2
-        + person.ROYYR3
-        + person.ROYYR4
-        + person.CHAMTERN
-        + person.CHAMTTST
+        odd_job_income
+        + person[["ALLPAY2", "ROYYR2", "ROYYR3", "CHAMTERN", "CHAMTTST"]].sum(
+            axis=1
+        )
     ) * 52
 
     frs["private_transfer_income"] = (
@@ -523,49 +522,52 @@ def add_benefit_income(
         )
 
     frs["JSA_contrib_reported"] = (
-        benefits.BENAMT[benefits.VAR2.isin((1, 3))][benefits.BENEFIT == 14]
-        .fillna(0)
-        .groupby(benefits.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
+        sum_to_entity(
+            benefits.BENAMT[benefits.VAR2.isin((1, 3))][
+                benefits.BENEFIT == 14
+            ],
+            benefits.person_id,
+            person.index,
+        )
         * 52
     )
     frs["JSA_income_reported"] = (
-        benefits.BENAMT[benefits.VAR2.isin((2, 4))][benefits.BENEFIT == 14]
-        .fillna(0)
-        .groupby(benefits.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
+        sum_to_entity(
+            benefits.BENAMT[benefits.VAR2.isin((2, 4))][
+                benefits.BENEFIT == 14
+            ],
+            benefits.person_id,
+            person.index,
+        )
         * 52
     )
     frs["ESA_contrib_reported"] = (
-        benefits.BENAMT[benefits.VAR2.isin((1, 3))][benefits.BENEFIT == 16]
-        .fillna(0)
-        .groupby(benefits.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
+        sum_to_entity(
+            benefits.BENAMT[benefits.VAR2.isin((1, 3))][
+                benefits.BENEFIT == 16
+            ],
+            benefits.person_id,
+            person.index,
+        )
         * 52
     )
     frs["ESA_income_reported"] = (
-        benefits.BENAMT[benefits.VAR2.isin((2, 4))][benefits.BENEFIT == 16]
-        .fillna(0)
-        .groupby(benefits.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
+        sum_to_entity(
+            benefits.BENAMT[benefits.VAR2.isin((2, 4))][
+                benefits.BENEFIT == 16
+            ],
+            benefits.person_id,
+            person.index,
+        )
         * 52
     )
 
     frs["BSP_reported"] = (
-        benefits.BENAMT[benefits.BENEFIT.isin((6, 9))]
-        .groupby(benefits.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
-        .values
+        sum_to_entity(
+            benefits.BENAMT[benefits.BENEFIT.isin((6, 9))],
+            benefits.person_id,
+            person.index,
+        )
         * 52
     )
 
@@ -636,38 +638,32 @@ def add_expenses(
     mortgage_capital = np.where(
         mortgage.RMORT == 1, mortgage.RMAMT, mortgage.BORRAMT
     )
-    mortgage_capital_repayment = (
-        (mortgage_capital / mortgage.MORTEND)
-        .groupby(mortgage.household_id)
-        .sum()
-        .reindex(household.index)
-        .fillna(0)
+    mortgage_capital_repayment = sum_to_entity(
+        mortgage_capital / mortgage.MORTEND,
+        mortgage.household_id,
+        household.index,
     )
     frs["mortgage_capital_repayment"] = mortgage_capital_repayment
 
     frs["childcare_expenses"] = (
-        childcare.CHAMT[childcare.COST == 1][childcare.REGISTRD == 1]
-        .groupby(childcare.person_id)
-        .sum()
-        .reindex(person.index)
-        .fillna(0)
-    ) * 52
+        sum_to_entity(
+            childcare.CHAMT[childcare.COST == 1][childcare.REGISTRD == 1],
+            childcare.person_id,
+            person.index,
+        )
+        * 52
+    )
 
     frs["private_pension_contributions"] = (
-        pen_prov.PENAMT[pen_prov.STEMPPEN.isin((5, 6))]
-        .groupby(pen_prov.person_id)
-        .sum()
-        .reindex(person.index)
-        .fillna(0)
-        .clip(0, pen_prov.PENAMT.quantile(0.95))
+        sum_to_entity(
+            pen_prov.PENAMT[pen_prov.STEMPPEN.isin((5, 6))],
+            childcare.person_id,
+            person.index,
+        )
         * 52
     )
     frs["occupational_pension_contributions"] = (
-        job.DEDUC1.fillna(0)
-        .groupby(job.person_id)
-        .sum()
-        .reindex(index=person.index)
-        .fillna(0)
+        sum_to_entity(job.DEDUC1.fillna(0), childcare.person_id, person.index)
         * 52
     )
 
