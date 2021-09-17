@@ -12,15 +12,11 @@ jobs:
         with:
           args: ". -l 79 --check"
   Test:
-<<<<<<< HEAD
+    if: github.repository == 'PolicyEngine/openfisca-uk-data'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
-=======
-    if: github.repository == 'UBICenter/openfisca-uk-data'
-    runs-on: ubuntu-latest
->>>>>>> 162c2e5842d8cfa9db7ff8bd4f7e8ff8e7c7e55c
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
@@ -34,7 +30,6 @@ jobs:
           export_default_credentials: true
       - name: Install package
         run: make install
-<<<<<<< HEAD
       - name: Download prerequisites
         run: openfisca-uk-data raw_frs download 2018 & openfisca-uk-data ukmod_input download 2018
       - name: Run and save tests
@@ -45,16 +40,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: gh-pages
           FOLDER: docs/book/_build/html
-=======
-      - name: Download microdata
-        run: gsutil cp gs://policyengine-uk-data/raw_frs_2018.h5 raw_frs_2018.h5
-      - name: Save microdata
-        run: openfisca-uk-data raw_frs save raw_frs_2018.h5 2018
-      - name: Run tests
-        run: make test
->>>>>>> 162c2e5842d8cfa9db7ff8bd4f7e8ff8e7c7e55c
   Publish:
-    if: github.repository == 'UBICenter/openfisca-uk-data'
+    if: github.repository == 'PolicyEngine/openfisca-uk-data'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo

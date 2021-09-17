@@ -9,4 +9,5 @@ format:
 	black . -l 79
 test:
 	pytest openfisca_uk_data/tests -vv
+	jb clean docs/book
 	jb build docs/book

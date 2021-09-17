@@ -16,10 +16,7 @@ setup(
         "tqdm",
         "tables",
         "h5py",
-<<<<<<< HEAD
         "google-cloud-storage",
-=======
->>>>>>> 162c2e5842d8cfa9db7ff8bd4f7e8ff8e7c7e55c
     ],
     entry_points={
         "console_scripts": ["openfisca-uk-data=openfisca_uk_data.cli:main"],
