@@ -15,6 +15,7 @@ setup(
         "pathlib",
         "tqdm",
         "h5py",
+        "tables",
         "google-cloud-storage",
         "jupyter-book>=0.11.1",
         "sphinxcontrib-bibtex>=1.0.0",
