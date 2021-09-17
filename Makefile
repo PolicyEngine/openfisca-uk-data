@@ -4,7 +4,6 @@ all:
 reset:
 	rm -rf openfisca_uk_data/microdata/**/*.h5
 install:
-	conda install -c anaconda hdf5
 	pip install git+https://github.com/PolicyEngine/openfisca-uk
 	pip install git+https://github.com/PSLmodels/synthimpute
 	pip install -e .
