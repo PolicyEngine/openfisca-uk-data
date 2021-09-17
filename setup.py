@@ -2,14 +2,14 @@ from setuptools import setup, find_packages
 
 setup(
     name="openfisca-uk-data",
-    version="0.1.2",
+    version="0.1.3",
     description=(
         "A Python package to manage OpenFisca-UK-compatible microdata"
     ),
     url="http://github.com/ubicenter/openfisca-uk-data",
     author="Nikhil Woodruff",
     author_email="nikhil.woodruff@outlook.com",
-    packages=find_packages(),
+    packages=find_packages(exclude="microdata"),
     install_requires=[
         "pandas",
         "pathlib",
