@@ -17,6 +17,8 @@ setup(
         "tables",
         "h5py",
         "google-cloud-storage",
+        "jupyter-book>=0.11.1",
+        "sphinxcontrib-bibtex>=1.0.0"
     ],
     entry_points={
         "console_scripts": ["openfisca-uk-data=openfisca_uk_data.cli:main"],
