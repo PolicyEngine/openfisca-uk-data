@@ -56,7 +56,7 @@ def impute_land(was_df: pd.DataFrame, year: int) -> pd.Series:
     ]
 
     IMPUTE_COLS = [
-        "est_land",  # Total wealth.
+        "est_land",  # Estimated land value based on property and corporate wealth.
     ]
 
     # FRS has investment income split between dividend and savings interest.
