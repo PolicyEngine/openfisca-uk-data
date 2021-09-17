@@ -7,5 +7,6 @@ DATASETS = (
     FRS,
     SynthFRS,
     FRS_SPI_Adjusted,
+    FRS_WAS_Imputation,
     SPI,
 )
