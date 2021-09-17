@@ -12,7 +12,6 @@ def main():
             FRS,
             SynthFRS,
             RawSPI,
-            BaseSPI,
             SPI,
             FRS_SPI_Adjusted,
         )

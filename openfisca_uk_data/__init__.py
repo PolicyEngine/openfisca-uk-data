@@ -8,5 +8,4 @@ DATASETS = (
     SynthFRS,
     FRS_SPI_Adjusted,
     SPI,
-    BaseSPI,
 )
