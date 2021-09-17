@@ -14,7 +14,6 @@ setup(
         "pandas",
         "pathlib",
         "tqdm",
-        "tables",
         "h5py",
         "google-cloud-storage",
         "jupyter-book>=0.11.1",
