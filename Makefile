@@ -4,6 +4,7 @@ all:
 reset:
 	rm -rf openfisca_uk_data/microdata/**/*.h5
 install:
+	pip install tables
 	pip install git+https://github.com/PolicyEngine/openfisca-uk
 	pip install git+https://github.com/PSLmodels/synthimpute
 	pip install -e .
