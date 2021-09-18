@@ -62,7 +62,9 @@ We estimate the land value of each household using these factors, producing land
 
 Given the estimated land value for each household in the WAS, our next task was to map it to households in the FRS, the core dataset for our analysis.
 We applied our [synthimpute](https://github.com/PSLmodels/synthimpute/) Python package, which imputes data from one source to another using skewed random forests quantile regression.
-Specifically, we built a nonparametric prediction model from the WAS of land value, based on several household characteristics common to the WAS and FRS[^1], then used that model to sample from each FRS household's predicted distribution.
+Specifically, we built a nonparametric prediction model from the WAS of land value, based on several household characteristics common to the WAS and FRS[^predictors], then used that model to sample from each FRS household's predicted distribution.
 To ensure that the total in the FRS matched the £5.5 trillion in land value, we introduced bias to sample from the predicted distribution using the Beta distribution.
+
+[^predictors]:  Our model of WAS land value used the following predictors: gross income, number of adults, number of children, pension income, employment income, self employment income, investment income, number of bedrooms, council tax, and whether the household rents.
 
 ![](images/land_frs_imputation.png)
