@@ -70,3 +70,8 @@ To ensure that the total in the FRS matched the £5.5 trillion in land value, we
 [^predictors]:  Our model of WAS land value used the following predictors: gross income, number of adults, number of children, pension income, employment income, self employment income, investment income, number of bedrooms, council tax, and whether the household rents.
 
 ![](images/land_frs_imputation.png)
+
+We're working on improvements to the land imputation:
+* [Uprating WAS data](https://github.com/PolicyEngine/openfisca-uk-data/issues/34) to account for wealth growth from 2018 to 2020
+* [Adding region to the WAS-FRS imputation](https://github.com/PolicyEngine/openfisca-uk-data/issues/21)
+* [Reporting model quality](https://github.com/PolicyEngine/openfisca-uk-data/issues/22) by summarizing quantile loss on a holdout set
