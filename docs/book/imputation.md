@@ -1,13 +1,15 @@
 ## Imputing land value to the FRS
 
-No UK dataset directly estimates land value alongside income, but we pieced together multiple datasets to estimate it:
+[**`frs_was_imputation.py`**](https://github.com/PolicyEngine/openfisca-uk-data/blob/master/openfisca_uk_data/datasets/frs/frs_was_imputation.py)
 
-* **An ONS summary** contains land value by sector.
-* **The Wealth and Assets Survey (WAS)** contains income, demographics, and wealth by asset type (but not land value).
-* **The Family Resources Survey (FRS)** contains income, benefits, and demographics (but not wealth); it is the core dataset for most distributional analysis.
+No UK dataset directly estimates land value alongside income, but we connected multiple government sources to estimate it:
 
-We started by combining the ONS summary with the WAS to estimate land value for each household in the WAS.
-Of the £5.7 trillion in total land value, the ONS reports that £3.9 trillion is held by households, £1.6 trillion is held by corporations, and the remaining £200 billion is held by governments.
+* [**2019 National Balance Sheet estimates (NBS)**](https://www.ons.gov.uk/economy/nationalaccounts/uksectoraccounts/datasets/thenationalbalancesheetestimates) contains land value by sector (Table C, column W).
+* [**2016-2018 Wealth and Assets Survey (WAS)**](https://www.ons.gov.uk/peoplepopulationandcommunity/personalandhouseholdfinances/debt/methodologies/wealthandassetssurveyqmi) contains income, demographics, and wealth by asset type (but not land value).
+* [**2019-2020 Family Resources Survey (FRS)**](https://www.gov.uk/government/statistics/family-resources-survey-financial-year-2019-to-2020) contains income, benefits, and demographics (but not wealth); it is the core dataset for most distributional analysis.
+
+We started by combining the NBS summary with the WAS to estimate land value for each household in the WAS.
+Of the £5.7 trillion in total land value, the NBS reports that £3.9 trillion is held by households, £1.6 trillion is held by corporations, and the remaining £200 billion is held by governments.
 
 <img src="images/land_pie.png" alt="drawing" width="200"/>
 
