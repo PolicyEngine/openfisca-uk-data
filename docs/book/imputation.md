@@ -9,7 +9,7 @@ No UK dataset directly estimates land value alongside income, but we pieced toge
 We started by combining the ONS summary with the WAS to estimate land value for each household in the WAS.
 Of the £5.7 trillion in total land value, the ONS reports that £3.9 trillion is held by households, £1.6 trillion is held by corporations, and the remaining £200 billion is held by governments.
 
-![](images/land_pie.png)
+<img src="images/land_pie.png" alt="drawing" width="200"/>
 
 The WAS, meanwhile, sums to £6.2 trillion in property wealth and £4.9 trillion in corporate wealth.
 Dividing the respective values shows that households have 62p of land for each £1 in property wealth, and 33p of land for each £1 in corporate wealth.
