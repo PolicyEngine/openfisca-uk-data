@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="openfisca-uk-data",
-    version="0.1.5",
+    version="0.1.6",
     description=(
         "A Python package to manage OpenFisca-UK-compatible microdata"
     ),
@@ -14,8 +14,8 @@ setup(
         "pandas",
         "pathlib",
         "tqdm",
-        "tables",
         "h5py",
+        "tables",
         "google-cloud-storage",
         "jupyter-book>=0.11.1",
         "sphinxcontrib-bibtex>=1.0.0",

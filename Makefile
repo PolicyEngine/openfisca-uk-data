@@ -6,6 +6,7 @@ reset:
 install:
 	pip install git+https://github.com/PolicyEngine/openfisca-uk
 	pip install git+https://github.com/PSLmodels/synthimpute
+	pip install git+https://github.com/PSLmodels/microdf
 	pip install -e .
 format:
 	black . -l 79
