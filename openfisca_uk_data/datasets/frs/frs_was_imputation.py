@@ -2,7 +2,6 @@ from openfisca_uk_data.utils import dataset, UK
 from openfisca_uk_data.datasets.frs.frs import FRS
 import pandas as pd
 import microdf as mdf
-import sklearn
 import synthimpute as si
 import h5py
 import numpy as np
@@ -52,7 +51,6 @@ def impute_land(was_df: pd.DataFrame, year: int) -> pd.Series:
         "num_bedrooms",
         "council_tax",
         "is_renting",
-        # "region"  # TODO: add region mapping from WAS int.
     ]
 
     IMPUTE_COLS = [
