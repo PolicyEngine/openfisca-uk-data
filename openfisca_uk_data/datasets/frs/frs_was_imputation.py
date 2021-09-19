@@ -24,11 +24,11 @@ class FRS_WAS_Imputation:
         frs.close()
 
 
-def impute_land(was_df: pd.DataFrame, year: int) -> pd.Series:
+def impute_land(was: pd.DataFrame, year: int) -> pd.Series:
     """Impute land by fitting a random forest model.
 
     Args:
-            was_df (pd.DataFrame): The WAS dataset.
+            was (pd.DataFrame): The WAS dataset.
             year (int): The year of simulation.
 
     Returns:
@@ -37,8 +37,6 @@ def impute_land(was_df: pd.DataFrame, year: int) -> pd.Series:
     from openfisca_uk import Microsimulation
 
     sim = Microsimulation(dataset=FRS, year=year)
-
-    was = pd.read_csv("~/was.csv")
 
     TRAIN_COLS = [
         "gross_income",
