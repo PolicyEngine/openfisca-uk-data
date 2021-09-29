@@ -13,7 +13,7 @@ class FRS_WAS_Imputation:
     name = "frs_was_imp"
     model = UK
 
-    def generate(year: int):
+    def generate(year: int) -> None:
         was_df = process_was()
         pred_land = impute_land(was_df, year)
         frs_was = h5py.File(FRS_WAS_Imputation.file(year), mode="w")
