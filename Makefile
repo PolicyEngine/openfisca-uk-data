@@ -15,8 +15,11 @@ test:
 	jb clean docs/book
 	jb build docs/book
 generate:
+	openfisca-uk-data raw_frs download 2018
 	openfisca-uk-data raw_frs download 2019
 	openfisca-uk-data raw_was download 2016
+	openfisca-uk-data frs generate 2018
+	openfisca-uk-data frs upload 2018
 	openfisca-uk-data frs generate 2019
 	openfisca-uk-data frs upload 2019
 	openfisca-uk-data frs_was_imp generate 2019
