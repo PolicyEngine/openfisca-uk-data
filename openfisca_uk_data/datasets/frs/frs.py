@@ -154,7 +154,7 @@ def add_personal_variables(frs: h5py.File, person: DataFrame):
     # Add basic personal variables
     age = person.AGE80 + person.AGE
     frs["age"] = age
-    frs["role"] = np.where(person.AGE80 == 0, "adult", "child").astype("S")
+    frs["role"] = np.where(person.AGE80 == 0, "child", "adult").astype("S")
     frs["gender"] = np.where(person.SEX == 1, "MALE", "FEMALE").astype("S")
     frs["hours_worked"] = person.TOTHOURS * 52
     frs["is_household_head"] = person.HRPID == 1

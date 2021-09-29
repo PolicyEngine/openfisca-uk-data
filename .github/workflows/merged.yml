@@ -44,6 +44,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: gh-pages
           FOLDER: docs/book/_build/html
+      - name: Build datasets
+        run: make generate
   Publish:
     if: github.repository == 'PolicyEngine/openfisca-uk-data'
     runs-on: ubuntu-latest

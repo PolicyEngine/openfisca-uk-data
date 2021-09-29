@@ -14,3 +14,6 @@ test:
 	pytest openfisca_uk_data/tests -vv
 	jb clean docs/book
 	jb build docs/book
+generate:
+	openfisca-uk-data raw_frs download 2019
+	openfisca-uk-data frs generate 2019
