@@ -154,6 +154,9 @@ def add_personal_variables(frs: h5py.File, person: DataFrame):
     # Add basic personal variables
     age = person.AGE80 + person.AGE
     frs["age"] = age
+    # Age fields are AGE80 (top-coded) and AGE in the adult and child tables, respectively.
+    # The role is used within OpenFisca models for enhanced aggregation features (e.g. sorting
+    # members within groups).
     frs["role"] = np.where(person.AGE80 == 0, "child", "adult").astype("S")
     frs["gender"] = np.where(person.SEX == 1, "MALE", "FEMALE").astype("S")
     frs["hours_worked"] = person.TOTHOURS * 52
