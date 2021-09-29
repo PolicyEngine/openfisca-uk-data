@@ -16,4 +16,8 @@ test:
 	jb build docs/book
 generate:
 	openfisca-uk-data raw_frs download 2019
+	openfisca-uk-data raw_was download 2020
 	openfisca-uk-data frs generate 2019
+	openfisca-uk-data frs upload 2019
+	openfisca-uk-data frs_was_imp generate 2019
+	openfisca-uk-data frs_was_imp upload 2019
