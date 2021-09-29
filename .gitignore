@@ -7,3 +7,4 @@ openfisca_uk_data.egg-info/
 .vscode/
 docs/book/_build/
 **/.ipynb_checkpoints
+OpenFisca_UK_Data.egg-info/*

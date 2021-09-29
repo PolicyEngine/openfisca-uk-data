@@ -20,12 +20,11 @@ class SynthFRS:
         from openfisca_uk import CountryTaxBenefitSystem
 
         ID_COLS = (
-            "P_person_id",
-            "P_benunit_id",
-            "P_household_id",
-            "B_benunit_id",
-            "B_household_id",
-            "H_household_id",
+            "person_person_id",
+            "person_benunit_id",
+            "person_household_id",
+            "benunit_id",
+            "household_id",
         )
 
         def anonymise(df: pd.DataFrame) -> pd.DataFrame:
@@ -51,7 +50,7 @@ class SynthFRS:
         for entity in entities:
             for variable in data.keys():
                 if system.variables[variable].entity.key == entity:
-                    entity_dfs[entity][variable] = data[variable][str(year)]
+                    entity_dfs[entity][variable] = data[variable]
         person, benunit, household = map(
             lambda x: anonymise(pd.DataFrame(x)), entity_dfs.values()
         )
@@ -59,12 +58,12 @@ class SynthFRS:
         year = int(year)
 
         with h5py.File(SynthFRS.file(year), mode="w") as f:
-            for variable in person.columns:
-                f[f"{variable}/{year}"] = person[variable].values
-            for variable in benunit.columns:
-                f[f"{variable}/{year}"] = benunit[variable].values
-            for variable in household.columns:
-                f[f"{variable}/{year}"] = household[variable].values
+            for df in (person, benunit, household):
+                for variable in df.columns:
+                    try:
+                        f[variable] = df[variable].values
+                    except:
+                        f[variable] = df[variable].values.astype("S")
 
     def save(data_file: str = DEFAULT_SYNTH_URL, year: int = 2018):
         if "https://" in data_file:

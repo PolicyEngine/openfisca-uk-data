@@ -1,5 +1,6 @@
 from openfisca_uk_data.utils import dataset, UK
 from openfisca_uk_data.datasets.frs.frs import FRS
+from openfisca_uk_data.datasets.was.raw_was import RawWAS
 import pandas as pd
 import microdf as mdf
 import synthimpute as si
@@ -12,8 +13,8 @@ class FRS_WAS_Imputation:
     name = "frs_was_imp"
     model = UK
 
-    def generate(was_file: str, year: int):
-        was_df = process_was(was_file)
+    def generate(year: int):
+        was_df = process_was()
         pred_land = impute_land(was_df, year)
         frs_was = h5py.File(FRS_WAS_Imputation.file(year), mode="w")
         frs = FRS.load(year)
@@ -80,11 +81,8 @@ def impute_land(was: pd.DataFrame, year: int) -> pd.Series:
     )
 
 
-def process_was(was_file: str) -> pd.DataFrame:
+def process_was() -> pd.DataFrame:
     """Process the Wealth and Assets Survey household wealth file.
-
-    Args:
-            was_file (str): Path to the file: was_round_6_hhold_eul_mar_20.tab.
 
     Returns:
             pd.DataFrame: The processed dataframe.
@@ -123,13 +121,12 @@ def process_was(was_file: str) -> pd.DataFrame:
         "TotWlthR6": "wealth",
     }
 
+    # TODO: Handle different WAS releases
+
     was = (
-        pd.read_csv(
-            was_file, usecols=RENAMES.keys(), delimiter="\t", low_memory=False
-        )
-        .replace(" ", 0)
-        .astype(float)
+        RawWAS.load(2016, "was_round_6_hhold_eul_mar_20")
         .rename(columns=RENAMES)
+        .fillna(0)
     )
 
     was["is_renting"] = was["is_renter"] == 1
