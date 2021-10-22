@@ -695,4 +695,4 @@ def add_expenses(
 
 
 def add_benunit_variables(frs: h5py.File, benunit: DataFrame):
-    frs["benunit_rent"] = benunit.BURENT.fillna(0) * 52
+    frs["benunit_rent"] = np.maximum(benunit.BURENT.fillna(0) * 52, 0)
