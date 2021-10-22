@@ -16,7 +16,7 @@ import h5py
 TEST_YEAR = 2018
 # Variable pairs to check for similarity
 with open(REPO / "tests" / "frs" / "variable_ukmod_map.yml") as f:
-    metadata = yaml.load(f)
+    metadata = yaml.safe_load(f)
 
 MAX_REL_ERROR = 0.05
 MAX_QUANTILE_REL_ERROR = 0.05
