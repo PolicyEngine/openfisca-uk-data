@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="OpenFisca-UK-Data",
-    version="0.1.11",
+    version="0.2.0",
     description=(
         "A Python package to manage OpenFisca-UK-compatible microdata"
     ),
