@@ -13,6 +13,7 @@ import h5py
 import requests
 from tqdm import tqdm
 import numpy as np
+import tables
 
 UK = "openfisca_uk"
 
@@ -66,10 +67,7 @@ def dataset(cls):
         file = cls.file(year)
         if cls.model:
             if key is None:
-                try:
-                    return h5py.File(file, mode="a")
-                except OSError:
-                    return h5py.File(file, mode="r")
+                return h5py.File(file, mode="r")
             else:
                 with h5py.File(file, mode="r") as f:
                     values = np.array(f[key])
