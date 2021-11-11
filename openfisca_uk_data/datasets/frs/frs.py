@@ -137,7 +137,7 @@ def add_id_variables(
     frs["household_id"] = person.household_id.sort_values().unique()
 
     # Add grossing weights
-    frs["person_weight"] = pd.Series(
+    frs["raw_person_weight"] = pd.Series(
         household.GROSS4[person.household_id].values, index=person.index
     )
     frs["benunit_weight"] = benunit.GROSS4
@@ -261,8 +261,8 @@ def add_household_variables(frs: h5py.File, household: DataFrame):
         "LONDON",
         "SOUTH_EAST",
         "SOUTH_WEST",
-        "SCOTLAND",
         "WALES",
+        "SCOTLAND",
         "NORTHERN_IRELAND",
         "UNKNOWN",
     ]
