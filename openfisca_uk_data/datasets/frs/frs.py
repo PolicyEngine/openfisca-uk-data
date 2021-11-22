@@ -296,15 +296,25 @@ def add_household_variables(frs: h5py.File, household: DataFrame):
 
     # Impute Council Tax
 
+    # Only ~25% of household report Council Tax bills - use
+    # these to build a model to impute missing values
     CT_valid = household.CTANNUAL > 0
+
+    # Find the mean reported Council Tax bill for a given
+    # (region, CT band, is-single-person-household) triplet
     region = household.GVTREGNO[CT_valid]
     band = household.CTBAND[CT_valid]
     single_person = (household.ADULTH == 1)[CT_valid]
     ctannual = household.CTANNUAL[CT_valid]
+
+    # Build the table
     CT_mean = ctannual.groupby(
         [region, band, single_person], dropna=False
     ).mean()
     CT_mean = CT_mean.replace(-1, CT_mean.mean())
+
+    # For every household consult the table to find the imputed
+    # Council Tax bill
     pairs = household.set_index(
         [household.GVTREGNO, household.CTBAND, (household.ADULTH == 1)]
     )
@@ -313,6 +323,9 @@ def add_household_variables(frs: h5py.File, household: DataFrame):
     hh_CT_mean[has_mean] = CT_mean[pairs.index[has_mean]].values
     hh_CT_mean[~has_mean] = 0
     CT_imputed = hh_CT_mean
+
+    # For households which originally reported Council Tax,
+    # use the reported value. Otherwise, use the imputed value
     council_tax = pd.Series(
         np.where(
             # 2018 FRS uses blanks for missing values, 2019 FRS

@@ -60,8 +60,9 @@ def impute_carbon(year: int) -> pd.Series:
 
     # Load the LCF data with carbon consumption
     lcf = load_lcfs_with_carbon(year)
+
     # Impute LCF carbon consumption to FRS households
-    carbon = impute_carbon_to_FRS(lcf, year)
+    return impute_carbon_to_FRS(lcf, year)
     return carbon
 
 
@@ -116,7 +117,11 @@ def load_lcfs_with_carbon(year: int) -> MicroDataFrame:
     Returns:
         MicroDataFrame: The LCF data with carbon consumption.
     """
-    households, people, emissions = load_and_process_lcf(year)
+    households, people = load_and_process_lcf(year)
+
+    emissions = pd.read_csv(
+        Path(__file__).parent / "ncfs_emissions_2019.csv"
+    ).set_index("code_start")
 
     # Manipulate LCF and NCFS data to get expenditure on the same categories
     # Both datasets use the COICOP classification
@@ -181,16 +186,21 @@ def load_lcfs_with_carbon(year: int) -> MicroDataFrame:
 
     # Add in LCF variables that also appear in the FRS-based microsimulation model
 
+    lcf_household_vars = households[list(HOUSEHOLD_LCF_RENAMES.keys())].rename(
+        columns=HOUSEHOLD_LCF_RENAMES
+    )
+    lcf_person_vars = (
+        people[list(PERSON_LCF_RENAMES) + ["case"]]
+        .rename(columns=PERSON_LCF_RENAMES)
+        .groupby("case")
+        .sum()
+    )
+
     lcf_with_carbon = pd.concat(
         [
             lcf_with_carbon,
-            households[list(HOUSEHOLD_LCF_RENAMES.keys())].rename(
-                columns=HOUSEHOLD_LCF_RENAMES
-            ),
-            people[list(PERSON_LCF_RENAMES) + ["case"]]
-            .rename(columns=PERSON_LCF_RENAMES)
-            .groupby("case")
-            .sum(),
+            lcf_household_vars,
+            lcf_person_vars,
         ],
         axis=1,
     )
@@ -209,7 +219,7 @@ def load_lcfs_with_carbon(year: int) -> MicroDataFrame:
 
 def load_and_process_lcf(
     year: int,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Load and process the LCF and NCFS summary data.
 
@@ -217,12 +227,9 @@ def load_and_process_lcf(
         year (int): The year of LCFS to use.
 
     Returns:
-        Tuple[DataFrame, DataFrame, DataFrame]: The LCF household, person and NCFS emissions data.
+        Tuple[pd.DataFrame, pd.DataFrame]: The LCF household and person tables.
     """
     households = RawLCF.load(2019, "lcfs_2019_dvhh_ukanon")
     people = RawLCF.load(2019, "lcfs_2019_dvper_ukanon201920")
-    emissions = pd.read_csv(
-        Path(__file__).parent / "ncfs_emissions_2019.csv"
-    ).set_index("code_start")
 
-    return households, people, emissions
+    return households, people
