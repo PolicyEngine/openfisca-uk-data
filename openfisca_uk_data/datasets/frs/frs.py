@@ -296,18 +296,28 @@ def add_household_variables(frs: h5py.File, household: DataFrame):
 
     # Impute Council Tax
 
-    region = household.GVTREGNO.fillna("N/A")
-    band = household.CTBAND.fillna("N/A")
-    single_person = (household.ADULTH == 1).fillna("N/A")
-    CT_mean = household.groupby(
+    CT_valid = household.CTANNUAL > 0
+    region = household.GVTREGNO[CT_valid]
+    band = household.CTBAND[CT_valid]
+    single_person = (household.ADULTH == 1)[CT_valid]
+    ctannual = household.CTANNUAL[CT_valid]
+    CT_mean = ctannual.groupby(
         [region, band, single_person], dropna=False
-    ).CTANNUAL.mean()
-    pairs = household.set_index([region, band, single_person])
-    hh_CT_mean = CT_mean[pairs.index].values
+    ).mean()
+    CT_mean = CT_mean.replace(-1, CT_mean.mean())
+    pairs = household.set_index(
+        [household.GVTREGNO, household.CTBAND, (household.ADULTH == 1)]
+    )
+    hh_CT_mean = pd.Series(index=pairs.index)
+    has_mean = pairs.index.isin(CT_mean.index)
+    hh_CT_mean[has_mean] = CT_mean[pairs.index[has_mean]].values
+    hh_CT_mean[~has_mean] = 0
     CT_imputed = hh_CT_mean
     council_tax = pd.Series(
         np.where(
-            household.CTANNUAL.isna(), max_(CT_imputed, 0), household.CTANNUAL
+            (household.CTANNUAL < 0),
+            max_(CT_imputed, 0).values,
+            household.CTANNUAL,
         )
     )
     frs["council_tax"] = council_tax.fillna(0)
