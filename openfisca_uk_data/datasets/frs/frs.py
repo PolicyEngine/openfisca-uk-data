@@ -315,7 +315,9 @@ def add_household_variables(frs: h5py.File, household: DataFrame):
     CT_imputed = hh_CT_mean
     council_tax = pd.Series(
         np.where(
-            (household.CTANNUAL < 0),
+            # 2018 FRS uses blanks for missing values, 2019 FRS
+            # uses -1 for missing values
+            (household.CTANNUAL < 0) | household.CTANNUAL.isna(),
             max_(CT_imputed, 0).values,
             household.CTANNUAL,
         )
