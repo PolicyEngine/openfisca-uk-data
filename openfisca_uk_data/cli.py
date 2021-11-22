@@ -16,6 +16,8 @@ def main():
             FRS_SPI_Adjusted,
             FRS_WAS_Imputation,
             RawWAS,
+            RawLCF,
+            FRSEnhanced,
         )
     }
     parser = ArgumentParser(
