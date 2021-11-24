@@ -8,3 +8,4 @@ from openfisca_uk_data.datasets.frs.frs_was_imputation import (
     FRS_WAS_Imputation,
 )
 from openfisca_uk_data.datasets.frs.synth_frs import SynthFRS
+from openfisca_uk_data.datasets.frs.frs_enhanced import FRSEnhanced

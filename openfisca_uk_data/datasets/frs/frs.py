@@ -296,18 +296,43 @@ def add_household_variables(frs: h5py.File, household: DataFrame):
 
     # Impute Council Tax
 
-    region = household.GVTREGNO.fillna("N/A")
-    band = household.CTBAND.fillna("N/A")
-    single_person = (household.ADULTH == 1).fillna("N/A")
-    CT_mean = household.groupby(
+    # Only ~25% of household report Council Tax bills - use
+    # these to build a model to impute missing values
+    CT_valid = household.CTANNUAL > 0
+
+    # Find the mean reported Council Tax bill for a given
+    # (region, CT band, is-single-person-household) triplet
+    region = household.GVTREGNO[CT_valid]
+    band = household.CTBAND[CT_valid]
+    single_person = (household.ADULTH == 1)[CT_valid]
+    ctannual = household.CTANNUAL[CT_valid]
+
+    # Build the table
+    CT_mean = ctannual.groupby(
         [region, band, single_person], dropna=False
-    ).CTANNUAL.mean()
-    pairs = household.set_index([region, band, single_person])
-    hh_CT_mean = CT_mean[pairs.index].values
+    ).mean()
+    CT_mean = CT_mean.replace(-1, CT_mean.mean())
+
+    # For every household consult the table to find the imputed
+    # Council Tax bill
+    pairs = household.set_index(
+        [household.GVTREGNO, household.CTBAND, (household.ADULTH == 1)]
+    )
+    hh_CT_mean = pd.Series(index=pairs.index)
+    has_mean = pairs.index.isin(CT_mean.index)
+    hh_CT_mean[has_mean] = CT_mean[pairs.index[has_mean]].values
+    hh_CT_mean[~has_mean] = 0
     CT_imputed = hh_CT_mean
+
+    # For households which originally reported Council Tax,
+    # use the reported value. Otherwise, use the imputed value
     council_tax = pd.Series(
         np.where(
-            household.CTANNUAL.isna(), max_(CT_imputed, 0), household.CTANNUAL
+            # 2018 FRS uses blanks for missing values, 2019 FRS
+            # uses -1 for missing values
+            (household.CTANNUAL < 0) | household.CTANNUAL.isna(),
+            max_(CT_imputed, 0).values,
+            household.CTANNUAL,
         )
     )
     frs["council_tax"] = council_tax.fillna(0)
