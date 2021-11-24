@@ -77,3 +77,23 @@ We're working on improvements to the land imputation:
 * [Uprating WAS data](https://github.com/PolicyEngine/openfisca-uk-data/issues/34) to account for wealth growth from 2018 to 2020
 * [Adding region to the WAS-FRS imputation](https://github.com/PolicyEngine/openfisca-uk-data/issues/21)
 * [Reporting model quality](https://github.com/PolicyEngine/openfisca-uk-data/issues/22) by summarizing quantile loss on a holdout set
+
+## Imputing carbon emissions to the FRS
+
+The Family Resources Survey does not contain consumption information on its respondents. However, the Living Costs and Food Survey does, and we can use it to estimate carbon emissions.
+
+To do this, we also use the [official estimates of the UK's carbon footprint](https://www.gov.uk/government/statistics/uks-carbon-footprint). These estimate the carbon emissions produced by each category of consumption. `ncfs_emissions_2019.csv` contains these estimates for 2019, along with their category names and [COICOP codes](https://unstats.un.org/unsd/classifications/unsdclassifications/COICOP_2018_-_pre-edited_white_cover_version_-_2018-12-26.pdf). We use these estimates to estimate the carbon emissions produced by each household first in the LCFS, then in the FRS.
+
+To estimate emissions produced by households in the LCFS, we use the shared categories of consumption: finding the total expenditure by households for each major category from the LCFS, and the total emissions produced by each category from the carbon footprint estimates. Then, we divide the emissions by the expenditure to find the carbon intensity of each category - the tonnes of C02 associated with each pound spent, per category. With this, we mutliply each households's expenditure in each category by that category's carbon intensity to find the total emissions produced by that household.
+
+LCFS households share some variables with FRS households:
+
+* Number of adults
+* Number of children
+* UK region
+* Employment income
+* Self-employment income
+* State pension
+* Pension income
+
+Similarly to land value, we fit a random forest model to predict carbon emissions from those predictors in the LCFS, then sample from the predicted distribution for FRS households to estimate the emissions produced by each household in the FRS.
