@@ -63,7 +63,6 @@ def impute_carbon(year: int) -> pd.Series:
 
     # Impute LCF carbon consumption to FRS households
     return impute_carbon_to_FRS(lcf, year)
-    return carbon
 
 
 def impute_carbon_to_FRS(lcf: MicroDataFrame, year: int) -> pd.Series:
