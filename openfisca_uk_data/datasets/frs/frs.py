@@ -614,12 +614,13 @@ def add_benefit_income(
         axis=1
     ) * 52 + person[["GRTDIR1", "GRTDIR2"]].sum(axis=1)
 
-    frs["council_tax_benefit_reported"] = (
+    frs["council_tax_benefit_reported"] = np.maximum(
         (person.HRPID == 1)
         * pd.Series(
             household.CTREBAMT[person.household_id].values, index=person.index
         ).fillna(0)
-        * 52
+        * 52,
+        0,
     )
 
 
