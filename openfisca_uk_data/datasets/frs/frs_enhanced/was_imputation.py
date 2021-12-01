@@ -1,3 +1,4 @@
+from microdf.generic import MicroDataFrame
 from openfisca_uk_data.datasets.was.raw_was import RawWAS
 from openfisca_uk_data.datasets.frs.frs import FRS
 import pandas as pd
@@ -5,7 +6,7 @@ import microdf as mdf
 import synthimpute as si
 
 
-def impute_land(year: int) -> pd.Series:
+def impute_wealth(year: int) -> pd.Series:
     """Impute land by fitting a random forest model.
 
     Args:
@@ -15,7 +16,7 @@ def impute_land(year: int) -> pd.Series:
             pd.Series: The predicted land values.
     """
 
-    was = load_and_process_was()
+    was, land_data = load_and_process_was()
 
     from openfisca_uk import Microsimulation
 
@@ -35,7 +36,11 @@ def impute_land(year: int) -> pd.Series:
     ]
 
     IMPUTE_COLS = [
-        "est_land",  # Estimated land value based on property and corporate wealth.
+        "owned_land_value",
+        "property_wealth",
+        "corporate_wealth",
+        "gross_financial_wealth",
+        "net_financial_wealth",
     ]
 
     # FRS has investment income split between dividend and savings interest.
@@ -53,13 +58,14 @@ def impute_land(year: int) -> pd.Series:
         frs.savings_interest_income + frs.dividend_income
     )
 
-    return si.rf_impute(
-        x_train=was[TRAIN_COLS],
-        y_train=was[IMPUTE_COLS],
-        x_new=frs[TRAIN_COLS],
-        sample_weight_train=was.weight,
-        new_weight=frs.household_weight,
-        target=mdf.weighted_sum(was, "est_land", "weight"),
+    return (
+        si.rf_impute(
+            x_train=was[TRAIN_COLS],
+            y_train=was[IMPUTE_COLS],
+            x_new=frs[TRAIN_COLS],
+            verbose=True,
+        ),
+        land_data,
     )
 
 
@@ -72,8 +78,8 @@ def load_and_process_was() -> pd.DataFrame:
     RENAMES = {
         "R6xshhwgt": "weight",
         # Components for estimating land holdings.
-        "DVLUKValR6_sum": "uk_land",
-        "DVPropertyR6": "property_values",
+        "DVLUKValR6_sum": "owned_land_value",  # in the UK
+        "DVPropertyR6": "property_wealth",
         "DVFESHARESR6_aggr": "emp_shares_options",
         "DVFShUKVR6_aggr": "uk_shares",
         "DVIISAVR6_aggr": "investment_isas",
@@ -106,7 +112,7 @@ def load_and_process_was() -> pd.DataFrame:
     # TODO: Handle different WAS releases
 
     was = (
-        RawWAS.load(2016, "was_round_6_hhold_eul_mar_20")
+        RawWAS.load(2016, "was_round_6_hhold_eul_mar_20")[list(RENAMES.keys())]
         .rename(columns=RENAMES)
         .fillna(0)
     )
@@ -122,7 +128,7 @@ def load_and_process_was() -> pd.DataFrame:
     GOV_LAND_VALUE = 196_730e6
 
     was["non_db_pensions"] = was.pensions - was.db_pensions
-    was["corp_wealth"] = was[
+    was["corporate_wealth"] = was[
         [
             "non_db_pensions",
             "emp_shares_options",
@@ -133,18 +139,18 @@ def load_and_process_was() -> pd.DataFrame:
     ].sum(axis=1)
 
     totals = mdf.weighted_sum(
-        was, ["uk_land", "property_values", "corp_wealth"], "weight"
+        was,
+        ["owned_land_value", "property_wealth", "corporate_wealth"],
+        "weight",
     )
 
-    land_prop_share = (
-        HH_NP_LAND_VALUE - totals.uk_land
-    ) / totals.property_values
-    land_corp_share = CORP_LAND_VALUE / totals.corp_wealth
+    land_property_share = (
+        HH_NP_LAND_VALUE - totals.owned_land_value
+    ) / totals.property_wealth
+    land_corporate_share = CORP_LAND_VALUE / totals.corporate_wealth
 
-    was["est_land"] = (
-        was.uk_land
-        + was.property_values * land_prop_share
-        + was.corp_wealth * land_corp_share
+    land_data = dict(
+        land_property_share=float(land_property_share),
+        land_corporate_share=float(land_corporate_share),
     )
-
-    return was
+    return MicroDataFrame(was, weights=was.weight), land_data
