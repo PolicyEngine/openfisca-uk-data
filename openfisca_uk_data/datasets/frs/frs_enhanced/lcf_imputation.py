@@ -21,7 +21,7 @@ CATEGORY_NAMES = {
     12: "Miscellaneous",
 }
 
-NAME_TO_VARIABLE_NAME = {
+name_to_variable_name = {
     category: category.replace(",", "")
     .replace(" ", "_")
     .replace("-", "_")
@@ -30,7 +30,7 @@ NAME_TO_VARIABLE_NAME = {
     for category in CATEGORY_NAMES.values()
 }
 
-CATEGORY_VARIABLES = list(NAME_TO_VARIABLE_NAME.values())
+CATEGORY_VARIABLES = list(name_to_variable_name.values())
 
 HOUSEHOLD_LCF_RENAMES = {
     "G018": "is_adult",
@@ -70,21 +70,21 @@ def impute_consumption(year: int) -> pd.Series:
     """
 
     # Load the LCF data with carbon consumption
-    lcf, carbon_intensity = load_lcfs_with_carbon(year)
+    lcf = load_lcfs(year)
 
-    # Impute LCF carbon consumption to FRS households
-    return impute_carbon_to_FRS(lcf, year), carbon_intensity
+    # Impute LCF consumption to FRS households
+    return impute_consumption_to_FRS(lcf, year)
 
 
-def impute_carbon_to_FRS(lcf: MicroDataFrame, year: int) -> pd.Series:
-    """Impute carbon consumption to the FRS.
+def impute_consumption_to_FRS(lcf: MicroDataFrame, year: int) -> pd.Series:
+    """Impute consumption to the FRS.
 
     Args:
         lcf (MicroDataFrame): The LCF data.
         year (int): The year of the FRS to use.
 
     Returns:
-        pd.Series: The imputed carbon consumption.
+        MicroDataFrame: The imputed consumption.
     """
 
     from openfisca_uk import Microsimulation
@@ -118,8 +118,8 @@ def impute_carbon_to_FRS(lcf: MicroDataFrame, year: int) -> pd.Series:
     )
 
 
-def load_lcfs_with_carbon(year: int) -> MicroDataFrame:
-    """Load LCF data with carbon consumption.
+def load_lcfs(year: int) -> MicroDataFrame:
+    """Load LCF data.
 
     Args:
         year (int): The year of LCFS to use.
@@ -139,7 +139,7 @@ def load_lcfs_with_carbon(year: int) -> MicroDataFrame:
     spending["household"] = households.case[spending.household].values
     households = households.set_index("case")
     spending.category = spending.category.map(CATEGORY_NAMES).map(
-        NAME_TO_VARIABLE_NAME
+        name_to_variable_name
     )
     spending.spending *= 52
     spending["weight"] = households.weighta[spending.household].values * 1000

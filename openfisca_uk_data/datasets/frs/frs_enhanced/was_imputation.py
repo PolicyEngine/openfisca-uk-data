@@ -77,7 +77,7 @@ def load_and_process_was() -> pd.DataFrame:
     RENAMES = {
         "R6xshhwgt": "weight",
         # Components for estimating land holdings.
-        "DVLUKValR6_sum": "owned_land_value",  # in the UK
+        "DVLUKValR6_sum": "owned_land_value",  # In the UK.
         "DVPropertyR6": "property_wealth",
         "DVFESHARESR6_aggr": "emp_shares_options",
         "DVFShUKVR6_aggr": "uk_shares",
