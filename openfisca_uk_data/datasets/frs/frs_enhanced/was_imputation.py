@@ -7,13 +7,13 @@ import synthimpute as si
 
 
 def impute_wealth(year: int) -> pd.Series:
-    """Impute land by fitting a random forest model.
+    """Impute wealth by fitting a random forest model.
 
     Args:
             year (int): The year of simulation.
 
     Returns:
-            pd.Series: The predicted land values.
+            pd.Series: The predicted wealth values.
     """
 
     was = load_and_process_was()
