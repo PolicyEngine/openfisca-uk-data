@@ -1,11 +1,13 @@
-from openfisca_uk_data.datasets.was.raw_was import RawWAS
+from pathlib import Path
+
+import yaml
 from openfisca_uk_data.utils import dataset, UK
 from openfisca_uk_data.datasets.frs.frs import FRS
 from openfisca_uk_data.datasets.frs.frs_enhanced.was_imputation import (
-    impute_land,
+    impute_wealth,
 )
 from openfisca_uk_data.datasets.frs.frs_enhanced.lcf_imputation import (
-    impute_carbon,
+    impute_consumption,
 )
 import h5py
 import numpy as np
@@ -18,16 +20,21 @@ class FRSEnhanced:
     model = UK
 
     def generate(year: int) -> None:
-        print("Imputing FRS land value exposure...", end="", flush=True)
-        t = time()
-        pred_land = impute_land(year)
+        folder = Path(__file__).parent
         print(
-            f" (completed in {round(time() - t, 1)}s)\nImputing FRS carbon consumption...",
+            "Imputing FRS property, corporate and land wealth...",
             end="",
             flush=True,
         )
         t = time()
-        pred_carbon = impute_carbon(year)
+        pred_wealth = impute_wealth(year)
+        print(
+            f" (completed in {round(time() - t, 1)}s)\nImputing FRS consumption categories...",
+            end="",
+            flush=True,
+        )
+        t = time()
+        pred_consumption = impute_consumption(year)
         print(
             f" (completed in {round(time() - t, 1)}s)\nGenerating default FRS...",
             end="",
@@ -39,8 +46,12 @@ class FRSEnhanced:
         frs = FRS.load(year)
         for variable in tuple(frs.keys()):
             frs_enhanced[variable] = np.array(frs[variable][...])
-        frs_enhanced["land_value"] = pred_land
-        frs_enhanced["carbon_consumption"] = pred_carbon
+        for wealth_category in pred_wealth.columns:
+            frs_enhanced[wealth_category] = pred_wealth[wealth_category].values
+        for consumption_category in pred_consumption.columns:
+            frs_enhanced[consumption_category] = pred_consumption[
+                consumption_category
+            ].values
         frs_enhanced.close()
         frs.close()
         print(f" (completed in {round(time() - t, 1)}s)\nDone", flush=True)

@@ -21,6 +21,17 @@ CATEGORY_NAMES = {
     12: "Miscellaneous",
 }
 
+name_to_variable_name = {
+    category: category.replace(",", "")
+    .replace(" ", "_")
+    .replace("-", "_")
+    .lower()
+    + "_consumption"
+    for category in CATEGORY_NAMES.values()
+}
+
+CATEGORY_VARIABLES = list(name_to_variable_name.values())
+
 HOUSEHOLD_LCF_RENAMES = {
     "G018": "is_adult",
     "G019": "is_child",
@@ -48,32 +59,32 @@ REGIONS = {
 }
 
 
-def impute_carbon(year: int) -> pd.Series:
-    """Impute carbon consumption by fitting a random forest model.
+def impute_consumption(year: int) -> pd.Series:
+    """Impute consumption by fitting a random forest model.
 
     Args:
         year (int): The year of LCFS to use.
 
     Returns:
-        pd.Series: The imputed carbon consumption.
+        pd.Series: The imputed consumption categories.
     """
 
     # Load the LCF data with carbon consumption
-    lcf = load_lcfs_with_carbon(year)
+    lcf = load_lcfs(year)
 
-    # Impute LCF carbon consumption to FRS households
-    return impute_carbon_to_FRS(lcf, year)
+    # Impute LCF consumption to FRS households
+    return impute_consumption_to_FRS(lcf, year)
 
 
-def impute_carbon_to_FRS(lcf: MicroDataFrame, year: int) -> pd.Series:
-    """Impute carbon consumption to the FRS.
+def impute_consumption_to_FRS(lcf: MicroDataFrame, year: int) -> pd.Series:
+    """Impute consumption to the FRS.
 
     Args:
         lcf (MicroDataFrame): The LCF data.
         year (int): The year of the FRS to use.
 
     Returns:
-        pd.Series: The imputed carbon consumption.
+        MicroDataFrame: The imputed consumption.
     """
 
     from openfisca_uk import Microsimulation
@@ -99,33 +110,24 @@ def impute_carbon_to_FRS(lcf: MicroDataFrame, year: int) -> pd.Series:
     lcf.region = lcf.region.map(
         {name: float(i) for i, name in REGIONS.items()}
     )
-
     return si.rf_impute(
-        x_train=lcf.drop(["carbon_tonnes"], axis=1),
-        y_train=lcf.carbon_tonnes,
+        x_train=lcf.drop(CATEGORY_VARIABLES, axis=1),
+        y_train=lcf[CATEGORY_VARIABLES],
         x_new=frs,
+        verbose=True,
     )
 
 
-def load_lcfs_with_carbon(year: int) -> MicroDataFrame:
-    """Load LCF data with carbon consumption.
+def load_lcfs(year: int) -> MicroDataFrame:
+    """Load LCF data.
 
     Args:
         year (int): The year of LCFS to use.
 
     Returns:
-        MicroDataFrame: The LCF data with carbon consumption.
+        MicroDataFrame: The LCF data
     """
     households, people = load_and_process_lcf(year)
-
-    emissions = pd.read_csv(
-        Path(__file__).parent / "ncfs_emissions_2019.csv"
-    ).set_index("code_start")
-
-    # Manipulate LCF and NCFS data to get expenditure on the same categories
-    # Both datasets use the COICOP classification
-    # Documentation: https://unstats.un.org/unsd/classifications/unsdclassifications/COICOP_2018_-_pre-edited_white_cover_version_-_2018-12-26.pdf
-
     index_to_col = {i: f"P6{i:02}" for i in CATEGORY_NAMES}
     spending = (
         households[list(index_to_col.values())]
@@ -136,49 +138,20 @@ def load_lcfs_with_carbon(year: int) -> MicroDataFrame:
     spending.columns = "category", "household", "spending"
     spending["household"] = households.case[spending.household].values
     households = households.set_index("case")
-    spending.category = spending.category.map(CATEGORY_NAMES)
+    spending.category = spending.category.map(CATEGORY_NAMES).map(
+        name_to_variable_name
+    )
     spending.spending *= 52
     spending["weight"] = households.weighta[spending.household].values * 1000
     spending = MicroDataFrame(spending, weights=spending.weight)
-    emissions.index = emissions.index.astype(str)
-    spending_by_category = spending.groupby("category").spending.sum()
 
-    grouped_ncfs = pd.DataFrame(
-        {
-            code: {
-                "category": CATEGORY_NAMES[code],
-                "carbon_tonnes": emissions[
-                    emissions.index.str.startswith(str(code))
-                ].carbon_tonnes.sum(),
-            }
-            for code in CATEGORY_NAMES.keys()
-        }
-    ).T.set_index("category")
+    for category in spending.category.unique():
+        spending[category] = (
+            spending.category == category
+        ) * spending.spending
 
-    # For each category, calculate spending from the LCFS and carbon emissions
-    # from the NCFS. Then, divide to find the carbon emissions per pound spent
-
-    carbon_by_category = pd.DataFrame(
-        {
-            category: {
-                "carbon_tonnes": grouped_ncfs.carbon_tonnes[category],
-                "spending": spending_by_category[category],
-            }
-            for category in spending.category.unique()
-        }
-    ).T
-
-    carbon_by_category["carbon_per_pound"] = (
-        carbon_by_category.carbon_tonnes / carbon_by_category.spending
-    )
-
-    # Multiple spending by carbon intensity to calculate LCF households' carbon footprints
-    spending["carbon_tonnes"] = (
-        carbon_by_category.carbon_per_pound[spending.category].values
-        * spending.spending
-    )
-    lcf_with_carbon = (
-        pd.DataFrame(spending[["household", "carbon_tonnes", "weight"]])
+    lcf_df = (
+        pd.DataFrame(spending[["household", "weight"] + CATEGORY_VARIABLES])
         .groupby("household")
         .sum()
     )
@@ -195,9 +168,9 @@ def load_lcfs_with_carbon(year: int) -> MicroDataFrame:
         .sum()
     )
 
-    lcf_with_carbon = pd.concat(
+    lcf_with_demographics = pd.concat(
         [
-            lcf_with_carbon,
+            lcf_df,
             lcf_household_vars,
             lcf_person_vars,
         ],
@@ -206,12 +179,12 @@ def load_lcfs_with_carbon(year: int) -> MicroDataFrame:
 
     # LCF incomes are weekly - convert to annual
     for variable in PERSON_LCF_RENAMES.values():
-        lcf_with_carbon[variable] *= 52
+        lcf_with_demographics[variable] *= 52
 
-    lcf_with_carbon.region = lcf_with_carbon.region.map(REGIONS)
-    lcf = lcf_with_carbon.sort_index()
+    lcf_with_demographics.region = lcf_with_demographics.region.map(REGIONS)
+    lcf = lcf_with_demographics.sort_index()
 
-    # Return household-level LCF dataset with carbon consumption
+    # Return household-level LCF dataset with categorised consumption
     # and FRS-shared columns
     return MicroDataFrame(lcf, weights=households.weighta[lcf.index] * 1000)
 
