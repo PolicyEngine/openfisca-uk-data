@@ -27,17 +27,14 @@ class FRSEnhanced:
             flush=True,
         )
         t = time()
-        pred_wealth, land_data = impute_wealth(year)
-        with open(folder / "land_formula.yaml", "w+") as f:
-            yaml.dump(land_data, f)
+        pred_wealth = impute_wealth(year)
         print(
-            f" (completed in {round(time() - t, 1)}s)\nImputing FRS carbon consumption...",
+            f" (completed in {round(time() - t, 1)}s)\nImputing FRS consumption categories...",
             end="",
             flush=True,
         )
         t = time()
-        pred_consumption, carbon_intensity = impute_consumption(year)
-        carbon_intensity.to_csv(Path(__file__).parent / "carbon_intensity.csv")
+        pred_consumption = impute_consumption(year)
         print(
             f" (completed in {round(time() - t, 1)}s)\nGenerating default FRS...",
             end="",

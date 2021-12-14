@@ -125,18 +125,9 @@ def load_lcfs_with_carbon(year: int) -> MicroDataFrame:
         year (int): The year of LCFS to use.
 
     Returns:
-        MicroDataFrame: The LCF data with carbon consumption.
+        MicroDataFrame: The LCF data
     """
     households, people = load_and_process_lcf(year)
-
-    emissions = pd.read_csv(
-        Path(__file__).parent / "ncfs_emissions_2019.csv"
-    ).set_index("code_start")
-
-    # Manipulate LCF and NCFS data to get expenditure on the same categories
-    # Both datasets use the COICOP classification
-    # Documentation: https://unstats.un.org/unsd/classifications/unsdclassifications/COICOP_2018_-_pre-edited_white_cover_version_-_2018-12-26.pdf
-
     index_to_col = {i: f"P6{i:02}" for i in CATEGORY_NAMES}
     spending = (
         households[list(index_to_col.values())]
@@ -153,37 +144,6 @@ def load_lcfs_with_carbon(year: int) -> MicroDataFrame:
     spending.spending *= 52
     spending["weight"] = households.weighta[spending.household].values * 1000
     spending = MicroDataFrame(spending, weights=spending.weight)
-    emissions.index = emissions.index.astype(str)
-    spending_by_category = spending.groupby("category").spending.sum()
-
-    grouped_ncfs = pd.DataFrame(
-        {
-            code: {
-                "category": NAME_TO_VARIABLE_NAME[CATEGORY_NAMES[code]],
-                "carbon_tonnes": emissions[
-                    emissions.index.str.startswith(str(code))
-                ].carbon_tonnes.sum(),
-            }
-            for code in CATEGORY_NAMES.keys()
-        }
-    ).T.set_index("category")
-
-    # For each category, calculate spending from the LCFS and carbon emissions
-    # from the NCFS. Then, divide to find the carbon emissions per pound spent
-
-    carbon_by_category = pd.DataFrame(
-        {
-            category: {
-                "carbon_tonnes": grouped_ncfs.carbon_tonnes[category],
-                "spending": spending_by_category[category],
-            }
-            for category in spending.category.unique()
-        }
-    ).T
-
-    carbon_by_category["carbon_per_pound"] = (
-        carbon_by_category.carbon_tonnes / carbon_by_category.spending
-    )
 
     for category in spending.category.unique():
         spending[category] = (
@@ -226,10 +186,7 @@ def load_lcfs_with_carbon(year: int) -> MicroDataFrame:
 
     # Return household-level LCF dataset with categorised consumption
     # and FRS-shared columns
-    return (
-        MicroDataFrame(lcf, weights=households.weighta[lcf.index] * 1000),
-        carbon_by_category,
-    )
+    return MicroDataFrame(lcf, weights=households.weighta[lcf.index] * 1000)
 
 
 def load_and_process_lcf(

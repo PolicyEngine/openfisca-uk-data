@@ -16,7 +16,7 @@ def impute_wealth(year: int) -> pd.Series:
             pd.Series: The predicted land values.
     """
 
-    was, land_data = load_and_process_was()
+    was = load_and_process_was()
 
     from openfisca_uk import Microsimulation
 
@@ -41,6 +41,8 @@ def impute_wealth(year: int) -> pd.Series:
         "corporate_wealth",
         "gross_financial_wealth",
         "net_financial_wealth",
+        "main_residence_value",
+        "other_property_value",
     ]
 
     # FRS has investment income split between dividend and savings interest.
@@ -58,14 +60,11 @@ def impute_wealth(year: int) -> pd.Series:
         frs.savings_interest_income + frs.dividend_income
     )
 
-    return (
-        si.rf_impute(
-            x_train=was[TRAIN_COLS],
-            y_train=was[IMPUTE_COLS],
-            x_new=frs[TRAIN_COLS],
-            verbose=True,
-        ),
-        land_data,
+    return si.rf_impute(
+        x_train=was[TRAIN_COLS],
+        y_train=was[IMPUTE_COLS],
+        x_new=frs[TRAIN_COLS],
+        verbose=True,
     )
 
 
@@ -107,6 +106,8 @@ def load_and_process_was() -> pd.DataFrame:
         "DVLUKDebtR6_sum": "uk_land_debt",
         "HFINWR6_Sum": "gross_financial_wealth",
         "TotWlthR6": "wealth",
+        "DVhvalueR6": "main_residence_value",
+        "OthpropvalR6_sum": "other_property_value",
     }
 
     # TODO: Handle different WAS releases
@@ -119,14 +120,6 @@ def load_and_process_was() -> pd.DataFrame:
 
     was["is_renting"] = was["is_renter"] == 1
 
-    # Land value held by households and non-profit institutions serving
-    # households: 3.9tn as of 2019 (ONS).
-    HH_NP_LAND_VALUE = 3_912_632e6
-    # Land value held by financial and non-financial corporations.
-    CORP_LAND_VALUE = 1_600_038e6
-    # Land value held by government (not used).
-    GOV_LAND_VALUE = 196_730e6
-
     was["non_db_pensions"] = was.pensions - was.db_pensions
     was["corporate_wealth"] = was[
         [
@@ -137,20 +130,4 @@ def load_and_process_was() -> pd.DataFrame:
             "unit_investment_trusts",
         ]
     ].sum(axis=1)
-
-    totals = mdf.weighted_sum(
-        was,
-        ["owned_land_value", "property_wealth", "corporate_wealth"],
-        "weight",
-    )
-
-    land_property_share = (
-        HH_NP_LAND_VALUE - totals.owned_land_value
-    ) / totals.property_wealth
-    land_corporate_share = CORP_LAND_VALUE / totals.corporate_wealth
-
-    land_data = dict(
-        land_property_share=float(land_property_share),
-        land_corporate_share=float(land_corporate_share),
-    )
-    return MicroDataFrame(was, weights=was.weight), land_data
+    return MicroDataFrame(was, weights=was.weight)
