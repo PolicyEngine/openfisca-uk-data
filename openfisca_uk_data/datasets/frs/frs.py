@@ -158,7 +158,18 @@ def add_personal_variables(frs: h5py.File, person: DataFrame):
     # The role is used within OpenFisca models for enhanced aggregation features (e.g. sorting
     # members within groups). AGE80 == 0 therefore indicates that the record is from the child
     # table (as we filled missing values with 0 when merging adult and child tables).
-    frs["role"] = np.where(person.AGE80 == 0, "child", "adult").astype("S")
+    frs["person_benunit_role"] = np.where(
+        person.AGE80 == 0, "child", "adult"
+    ).astype("S")
+    frs["person_household_role"] = np.where(
+        person.AGE80 == 0, "child", "adult"
+    ).astype("S")
+    frs["person_country_role"] = np.array(["citizen"] * len(person)).astype(
+        "S"
+    )
+    frs["country_id"] = np.array([1])
+    frs["person_country_id"] = np.array([1] * len(person))
+    frs["country_weight"] = np.array([1])
     frs["gender"] = np.where(person.SEX == 1, "MALE", "FEMALE").astype("S")
     frs["hours_worked"] = person.TOTHOURS * 52
     frs["is_household_head"] = person.HRPID == 1

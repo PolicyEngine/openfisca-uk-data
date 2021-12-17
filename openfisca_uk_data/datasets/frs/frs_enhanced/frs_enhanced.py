@@ -1,7 +1,5 @@
 from pathlib import Path
-
-import yaml
-from openfisca_uk_data.utils import dataset, UK
+from openfisca_uk_data.utils import dataset, UK, PACKAGE_DIR
 from openfisca_uk_data.datasets.frs.frs import FRS
 from openfisca_uk_data.datasets.frs.frs_enhanced.was_imputation import (
     impute_wealth,
@@ -12,6 +10,7 @@ from openfisca_uk_data.datasets.frs.frs_enhanced.lcf_imputation import (
 import h5py
 import numpy as np
 from time import time
+import pandas as pd
 
 
 @dataset
@@ -44,6 +43,19 @@ class FRSEnhanced:
         frs_enhanced = h5py.File(FRSEnhanced.file(year), mode="w")
         FRS.generate(year)
         frs = FRS.load(year)
+        results = pd.DataFrame(
+            {
+                "household_id": np.array(frs["household_id"][...]),
+            }
+        )
+        pd.concat(
+            [
+                results,
+                pred_wealth,
+                pred_consumption,
+            ],
+            axis=1,
+        ).to_csv(PACKAGE_DIR / "imputations" / f"imputations_{year}.csv")
         for variable in tuple(frs.keys()):
             frs_enhanced[variable] = np.array(frs[variable][...])
         for wealth_category in pred_wealth.columns:

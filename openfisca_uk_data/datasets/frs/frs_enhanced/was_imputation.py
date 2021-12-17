@@ -42,7 +42,8 @@ def impute_wealth(year: int) -> pd.Series:
         "gross_financial_wealth",
         "net_financial_wealth",
         "main_residence_value",
-        "other_property_value",
+        "other_residential_property_value",
+        "non_residential_property_value",
     ]
 
     # FRS has investment income split between dividend and savings interest.
@@ -107,7 +108,8 @@ def load_and_process_was() -> pd.DataFrame:
         "HFINWR6_Sum": "gross_financial_wealth",
         "TotWlthR6": "wealth",
         "DVhvalueR6": "main_residence_value",
-        "OthpropvalR6_sum": "other_property_value",
+        "DVHseValR6_sum": "other_residential_property_value",
+        "DVBlDValR6_sum": "non_residential_property_value",
     }
 
     # TODO: Handle different WAS releases

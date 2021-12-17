@@ -8,6 +8,7 @@ DATASETS = (
     SynthFRS,
     FRS_SPI_Adjusted,
     FRS_WAS_Imputation,
+    FRSEnhanced,
     SPI,
     RawLCF,
 )
