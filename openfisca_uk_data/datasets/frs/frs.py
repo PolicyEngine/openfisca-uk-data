@@ -164,12 +164,10 @@ def add_personal_variables(frs: h5py.File, person: DataFrame):
     frs["person_household_role"] = np.where(
         person.AGE80 == 0, "child", "adult"
     ).astype("S")
-    frs["person_country_role"] = np.array(["citizen"] * len(person)).astype(
-        "S"
-    )
-    frs["country_id"] = np.array([1])
-    frs["person_country_id"] = np.array([1] * len(person))
-    frs["country_weight"] = np.array([1])
+    frs["person_state_role"] = np.array(["citizen"] * len(person)).astype("S")
+    frs["state_id"] = np.array([1])
+    frs["person_state_id"] = np.array([1] * len(person))
+    frs["state_weight"] = np.array([1])
     frs["gender"] = np.where(person.SEX == 1, "MALE", "FEMALE").astype("S")
     frs["hours_worked"] = person.TOTHOURS * 52
     frs["is_household_head"] = person.HRPID == 1
