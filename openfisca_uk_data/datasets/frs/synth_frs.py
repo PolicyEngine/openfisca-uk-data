@@ -55,7 +55,7 @@ class SynthFRS:
                         "S"
                     )
 
-    def save(data_file: str = None, year: int = 2019):
+    def save(data_file: str = None, year: int = 2018):
         if data_file is None:
             data_file = DEFAULT_SYNTH_FOLDER + f"synth_frs_{year}.h5"
         if "https://" in data_file:
