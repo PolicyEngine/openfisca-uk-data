@@ -7,65 +7,57 @@ import h5py
 import requests
 from tqdm import tqdm
 
-DEFAULT_SYNTH_URL = "https://github.com/UBICenter/openfisca-uk-data/releases/download/synth-frs/synth_frs_2018.h5"
+DEFAULT_SYNTH_FOLDER = "https://github.com/PolicyEngine/openfisca-uk-data/releases/download/synth-frs/"
 
 
 @dataset
 class SynthFRS:
     name = "synth_frs"
     model = UK
-    input_reform_from_year = FRS.input_reform_from_year
 
     def generate(year):
-        from openfisca_uk import CountryTaxBenefitSystem
-
         ID_COLS = (
-            "person_person_id",
+            "person_id",
             "person_benunit_id",
+            "person_benunit_role",
             "person_household_id",
+            "person_household_role",
+            "person_state_id",
+            "person_state_role",
             "benunit_id",
             "household_id",
+            "state_id",
         )
 
-        def anonymise(df: pd.DataFrame) -> pd.DataFrame:
-            result = df.copy()
-            for col in result.columns:
-                if col not in ID_COLS:
-                    # don't change identity columns, this breaks structures
-                    if result[col].unique().size < 16:
-                        # shuffle categorical columns
-                        result[col] = result[col].sample(frac=1).values
-                    else:
-                        # shuffle + add noise to numeric columns
-                        # noise = between -3% and +3% added to each row
-                        noise = np.random.rand() * 3e-2 + 1.0
-                        result[col] = result[col].sample(frac=1).values * noise
+        def anonymise(arr: np.array, name: str) -> pd.DataFrame:
+            result = pd.Series(arr)
+            if name not in ID_COLS:
+                # don't change identity columns, this breaks structures
+                if len(result.unique()) < 16:
+                    # shuffle categorical columns
+                    result = result.sample(frac=1).values
+                else:
+                    # shuffle + add noise to numeric columns
+                    # noise = between -3% and +3% added to each row
+                    noise = np.random.rand() * 3e-2 + 1.0
+                    result = result.sample(frac=1).values * noise
             return result
 
-        year = 2018
-        system = CountryTaxBenefitSystem()
         data = FRS.load(year)
-        entities = ("person", "benunit", "household")
-        entity_dfs = {key: {} for key in entities}
-        for entity in entities:
-            for variable in data.keys():
-                if system.variables[variable].entity.key == entity:
-                    entity_dfs[entity][variable] = data[variable]
-        person, benunit, household = map(
-            lambda x: anonymise(pd.DataFrame(x)), entity_dfs.values()
-        )
-
         year = int(year)
 
         with h5py.File(SynthFRS.file(year), mode="w") as f:
-            for df in (person, benunit, household):
-                for variable in df.columns:
-                    try:
-                        f[variable] = df[variable].values
-                    except:
-                        f[variable] = df[variable].values.astype("S")
+            for variable in data.keys():
+                try:
+                    f[variable] = anonymise(data[variable], variable)
+                except:
+                    f[variable] = anonymise(data[variable], variable).astype(
+                        "S"
+                    )
 
-    def save(data_file: str = DEFAULT_SYNTH_URL, year: int = 2018):
+    def save(data_file: str = None, year: int = 2018):
+        if data_file is None:
+            data_file = DEFAULT_SYNTH_FOLDER + f"synth_frs_{year}.h5"
         if "https://" in data_file:
             response = requests.get(data_file, stream=True)
             total_size_in_bytes = int(
