@@ -7,7 +7,7 @@ import h5py
 import requests
 from tqdm import tqdm
 
-DEFAULT_SYNTH_URL = "https://github.com/PolicyEngine/openfisca-uk-data/releases/download/synth-frs/synth_frs_2019.h5"
+DEFAULT_SYNTH_FOLDER = "https://github.com/PolicyEngine/openfisca-uk-data/releases/download/synth-frs/"
 
 
 @dataset
@@ -16,8 +16,6 @@ class SynthFRS:
     model = UK
 
     def generate(year):
-        from openfisca_uk import CountryTaxBenefitSystem
-
         ID_COLS = (
             "person_id",
             "person_benunit_id",
@@ -57,7 +55,9 @@ class SynthFRS:
                         "S"
                     )
 
-    def save(data_file: str = DEFAULT_SYNTH_URL, year: int = 2019):
+    def save(data_file: str = None, year: int = 2019):
+        if data_file is None:
+            data_file = DEFAULT_SYNTH_FOLDER + f"synth_frs_{year}.h5"
         if "https://" in data_file:
             response = requests.get(data_file, stream=True)
             total_size_in_bytes = int(
