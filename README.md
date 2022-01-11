@@ -1,6 +1,6 @@
 # openfisca-uk-data
 
-This package allows users to store and load various UK microdata sources for usage in `openfisca-uk`, with different configurations (e.g. imputations between surveys).
+This package allows users to store and load various UK microdata sources for usage in `openfisca-uk` , with different configurations (e.g. imputations between surveys).
 
 ## What you probably want to do
 
@@ -24,10 +24,13 @@ This package is designed to be simple to add new OpenFisca-UK-compatible dataset
 ## Usage
 
 All dataset classes can be imported from the package, and there is also a command line interface:
+
 ```console
 openfisca-uk-data [dataset_name] [method] [arg1] [arg2]
 ```
+
 For example:
+
 ```console
 openfisca-uk-data raw_frs generate 2018 data.zip
 ```
@@ -35,6 +38,7 @@ openfisca-uk-data raw_frs generate 2018 data.zip
 ## The `dataset` class decorator
 
 This package uses a class decorator to ensure all datasets have the same loading/saving/querying interface. To use it, use the `@` symbol:
+
 ```python
 @dataset
 class CustomDataset:
@@ -47,17 +51,26 @@ class CustomDataset:
 ## Current datasets
 
 ### RawFRS
-- Not OpenFisca-UK-compatible
-- Contains the tables from the raw microdata
+
+* Not OpenFisca-UK-compatible
+* Contains the tables from the raw microdata
+
 ### BaseFRS
-- OpenFisca-UK-compatible
-- Loads the named survey variables, and specifies how these should be transformed into the model's input variables using OpenFisca formulas
+
+* OpenFisca-UK-compatible
+* Loads the named survey variables, and specifies how these should be transformed into the model's input variables using OpenFisca formulas
+
 ### FRS
-- OpenFisca-UK-compatible
-- Skips loading the named survey variables like BaseFRS, instead loading the calculated input variables from using BaseFRS
+
+* OpenFisca-UK-compatible
+* Skips loading the named survey variables like BaseFRS, instead loading the calculated input variables from using BaseFRS
+
 ### SPI
-- OpenFisca-UK-compatible
-- Admin tax data
+
+* OpenFisca-UK-compatible
+* Admin tax data
+
 ### SynthFRS
-- OpenFisca-UK-compatible
-- Inaccurate but gives ballpark-correct results without access to the full FRS (fields shuffled + random noise added)
+
+* OpenFisca-UK-compatible
+* Inaccurate but gives ballpark-correct results without access to the full FRS (fields shuffled + random noise added)
