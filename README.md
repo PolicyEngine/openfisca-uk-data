@@ -1,6 +1,7 @@
 # openfisca-uk-data
 
 This package allows users to store and load various UK microdata sources for usage in `openfisca-uk` , with different configurations (e.g. imputations between surveys).
+Full documentation is available at [openfisca-uk-data.policyengine.dev](https://openfisca-uk-data.policyengine.dev).
 
 ## What you probably want to do
 
@@ -15,7 +16,9 @@ To get this package working with the FRS microdata:
 
 ## General framework
 
-This package is designed to be simple to add new OpenFisca-UK-compatible datasets.uk. To add a new dataset:
+This package is designed to be simple to add new OpenFisca-UK-compatible datasets.uk.
+
+To add a new dataset:
 1. Add a new Python module as a single file or folder with `__init__.py` (optional)
 2. Create a class with the `@dataset` decorator (from `utils.py`)
 3. Define a `generate(year)` method
@@ -64,6 +67,11 @@ class CustomDataset:
 
 * OpenFisca-UK-compatible
 * Skips loading the named survey variables like BaseFRS, instead loading the calculated input variables from using BaseFRS
+
+### EnhancedFRS
+
+* OpenFisca-UK-compatible
+* Everything in FRS, plus imputations from the Wealth and Assets Survey and the Living Costs and Food Survey
 
 ### SPI
 
