@@ -1,7 +1,5 @@
 from pathlib import Path
 import pandas as pd
-import numpy as np
-from microdf import MicroDataFrame
 from openfisca_uk_data.utils import dataset
 
 NON_MONTHLY_VARIABLES = (

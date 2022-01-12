@@ -539,6 +539,7 @@ def add_benefit_income(
         SDA=10,
         AFCS=8,
         maternity_allowance=21,
+        ssmg=22,
         pension_credit=4,
         child_tax_credit=91,
         working_tax_credit=90,
@@ -617,11 +618,41 @@ def add_benefit_income(
     frs["SSP"] = person.SSPADJ * 52
     frs["SMP"] = person.SMPADJ * 52
 
-    frs["student_loans"] = person.TUBORR
+    frs["student_loans"] = np.maximum(person.TUBORR, 0)
 
-    frs["student_payments"] = person[["ADEMAAMT", "CHEMAAMT", "ACCSSAMT"]].sum(
-        axis=1
-    ) * 52 + person[["GRTDIR1", "GRTDIR2"]].sum(axis=1)
+    frs["adult_ema"] = (
+        np.maximum(
+            np.where(
+                (person.ADEMA == 1) & (person.ADEMAAMT < 0),
+                person.ADEMAAMT[
+                    (person.ADEMA == 1) & (person.ADEMAAMT > 0)
+                ].mean(),
+                person.ADEMA,
+            ),
+            0,
+        )
+        * 52
+    )
+
+    frs["child_ema"] = (
+        np.maximum(
+            np.where(
+                (person.CHEMA == 1) & (person.CHEMAAMT < 0),
+                person.CHEMAAMT[
+                    (person.CHEMA == 1) & (person.CHEMAAMT > 0)
+                ].mean(),
+                person.CHEMA,
+            ),
+            0,
+        )
+        * 52
+    )
+
+    frs["access_fund"] = np.maximum(person.ACCSSAMT, 0) * 52
+
+    frs["education_grants"] = np.maximum(
+        person[["GRTDIR1", "GRTDIR2"]].sum(axis=1), 0
+    )
 
     frs["council_tax_benefit_reported"] = np.maximum(
         (person.HRPID == 1)
