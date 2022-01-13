@@ -528,7 +528,8 @@ def fill_with_mean(
         np.array: Filled values.
     """
     needs_fill = (table[code] == 1) & (table[amount] < 0)
-    fill_mean = table[amount][needs_fill].mean()
+    has_value = (table[code] == 1) & (table[amount] >= 0)
+    fill_mean = table[amount][has_value].mean()
     filled_values = np.where(needs_fill, fill_mean, table[code])
     return np.maximum(filled_values, 0)
 
