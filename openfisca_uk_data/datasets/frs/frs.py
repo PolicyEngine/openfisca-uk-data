@@ -530,7 +530,7 @@ def fill_with_mean(
     needs_fill = (table[code] == 1) & (table[amount] < 0)
     has_value = (table[code] == 1) & (table[amount] >= 0)
     fill_mean = table[amount][has_value].mean()
-    filled_values = np.where(needs_fill, fill_mean, table[code])
+    filled_values = np.where(needs_fill, fill_mean, table[amount])
     return np.maximum(filled_values, 0)
 
 
