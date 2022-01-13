@@ -531,7 +531,7 @@ def fill_with_mean(
     has_value = (table[code] == 1) & (table[amount] >= 0)
     fill_mean = table[amount][has_value].mean()
     filled_values = np.where(needs_fill, fill_mean, table[amount])
-    return np.maximum(filled_values, 0)
+    return np.maximum(filled_values, 0) * multiplier
 
 
 def add_benefit_income(
