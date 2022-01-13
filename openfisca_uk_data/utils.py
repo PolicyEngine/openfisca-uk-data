@@ -150,7 +150,18 @@ def dataset(cls):
         def download(year):
             from google.cloud import storage
 
-            client = storage.Client()
+            try:
+                client = storage.Client()
+            except:
+                print("Could not automatically authenticate with Google Cloud, prompting login...")
+                failed_login = os.system("gcloud auth application-default login")
+                if not failed_login:
+                    print("Successfully logged in to Google Cloud.")
+                    client = storage.Client()
+                else:
+                    raise Exception(
+                        "Could not authenticate with Google Cloud."
+                    )
             bucket = client.get_bucket("policyengine-uk-data")
             blob = bucket.blob(cls.file(year).name)
             with open(cls.file(year), "wb") as f:
