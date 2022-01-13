@@ -513,6 +513,26 @@ def add_market_income(
     frs["lump_sum_income"] = person.REDAMT
 
 
+def fill_with_mean(
+    table: pd.DataFrame, code: str, amount: str, multiplier: float = 52
+) -> np.array:
+    """Fills missing values in a table with the mean of the column.
+
+    Args:
+        table (DataFrame): Table to fill.
+        code (str): Column signifying existence.
+        amount (str): Column with values.
+        multiplier (float): Multiplier to apply to amount.
+
+    Returns:
+        np.array: Filled values.
+    """
+    needs_fill = (table[code] == 1) & (table[amount] < 0)
+    fill_mean = table[amount][needs_fill].mean()
+    filled_values = np.where(needs_fill, fill_mean, table[code])
+    return np.maximum(filled_values, 0)
+
+
 def add_benefit_income(
     frs: h5py.File,
     person: DataFrame,
@@ -620,33 +640,8 @@ def add_benefit_income(
 
     frs["student_loans"] = np.maximum(person.TUBORR, 0)
 
-    frs["adult_ema"] = (
-        np.maximum(
-            np.where(
-                (person.ADEMA == 1) & (person.ADEMAAMT < 0),
-                person.ADEMAAMT[
-                    (person.ADEMA == 1) & (person.ADEMAAMT > 0)
-                ].mean(),
-                person.ADEMA,
-            ),
-            0,
-        )
-        * 52
-    )
-
-    frs["child_ema"] = (
-        np.maximum(
-            np.where(
-                (person.CHEMA == 1) & (person.CHEMAAMT < 0),
-                person.CHEMAAMT[
-                    (person.CHEMA == 1) & (person.CHEMAAMT > 0)
-                ].mean(),
-                person.CHEMA,
-            ),
-            0,
-        )
-        * 52
-    )
+    frs["adult_ema"] = fill_with_mean(person, "ADEMA", "ADEMAAMT")
+    frs["child_ema"] = fill_with_mean(person, "CHEMA", "CHEMAAMT")
 
     frs["access_fund"] = np.maximum(person.ACCSSAMT, 0) * 52
 
