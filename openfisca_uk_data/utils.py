@@ -220,7 +220,7 @@ def safe_rmdir(path: str):
 def extract_version_info(filename: str) -> Tuple[int, int, int]:
     filename = filename.split(".")[0]
     if "v" in filename:
-        return *tuple(map(int, filename.split("v")[1].split("_"))), filename
+        return (*tuple(map(int, filename.split("v")[1].split("_"))), filename)
     else:
         return None
 
