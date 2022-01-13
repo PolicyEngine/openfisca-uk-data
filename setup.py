@@ -1,8 +1,9 @@
+from openfisca_uk_data import VERSION
 from setuptools import setup, find_packages
 
 setup(
     name="OpenFisca-UK-Data",
-    version="0.5.4",
+    version=VERSION,
     description=(
         "A Python package to manage OpenFisca-UK-compatible microdata"
     ),
