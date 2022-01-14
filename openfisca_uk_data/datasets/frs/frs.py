@@ -513,6 +513,27 @@ def add_market_income(
     frs["lump_sum_income"] = person.REDAMT
 
 
+def fill_with_mean(
+    table: pd.DataFrame, code: str, amount: str, multiplier: float = 52
+) -> np.array:
+    """Fills missing values in a table with the mean of the column.
+
+    Args:
+        table (DataFrame): Table to fill.
+        code (str): Column signifying existence.
+        amount (str): Column with values.
+        multiplier (float): Multiplier to apply to amount.
+
+    Returns:
+        np.array: Filled values.
+    """
+    needs_fill = (table[code] == 1) & (table[amount] < 0)
+    has_value = (table[code] == 1) & (table[amount] >= 0)
+    fill_mean = table[amount][has_value].mean()
+    filled_values = np.where(needs_fill, fill_mean, table[amount])
+    return np.maximum(filled_values, 0) * multiplier
+
+
 def add_benefit_income(
     frs: h5py.File,
     person: DataFrame,
@@ -539,6 +560,7 @@ def add_benefit_income(
         SDA=10,
         AFCS=8,
         maternity_allowance=21,
+        ssmg=22,
         pension_credit=4,
         child_tax_credit=91,
         working_tax_credit=90,
@@ -617,11 +639,16 @@ def add_benefit_income(
     frs["SSP"] = person.SSPADJ * 52
     frs["SMP"] = person.SMPADJ * 52
 
-    frs["student_loans"] = person.TUBORR
+    frs["student_loans"] = np.maximum(person.TUBORR, 0)
 
-    frs["student_payments"] = person[["ADEMAAMT", "CHEMAAMT", "ACCSSAMT"]].sum(
-        axis=1
-    ) * 52 + person[["GRTDIR1", "GRTDIR2"]].sum(axis=1)
+    frs["adult_ema"] = fill_with_mean(person, "ADEMA", "ADEMAAMT")
+    frs["child_ema"] = fill_with_mean(person, "CHEMA", "CHEMAAMT")
+
+    frs["access_fund"] = np.maximum(person.ACCSSAMT, 0) * 52
+
+    frs["education_grants"] = np.maximum(
+        person[["GRTDIR1", "GRTDIR2"]].sum(axis=1), 0
+    )
 
     frs["council_tax_benefit_reported"] = np.maximum(
         (person.HRPID == 1)

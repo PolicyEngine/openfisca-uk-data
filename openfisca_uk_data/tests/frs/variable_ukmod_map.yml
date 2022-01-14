@@ -38,7 +38,6 @@ universal_credit_reported: bsauc
 PIP_M_reported: bdimbwa
 PIP_DL_reported: bdiscwa
 student_loans: bedsl
-student_payments: bedes
 council_tax_benefit_reported: bmu
 council_tax:
   ukmod: tmu02

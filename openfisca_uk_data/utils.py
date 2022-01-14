@@ -18,7 +18,7 @@ import numpy as np
 import warnings
 from google.cloud import storage
 
-VERSION = "0.5.5"
+VERSION = "0.7.0"
 
 UK = "openfisca_uk"
 
