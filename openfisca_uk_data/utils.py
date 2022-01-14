@@ -1,6 +1,7 @@
+import logging
 from pathlib import Path
 import shutil
-from typing import Callable, Type
+from typing import Callable, Tuple, Type
 from openfisca_core.model_api import *
 from pathlib import Path
 import shutil
@@ -8,12 +9,16 @@ from typing import List
 import pandas as pd
 import re
 import os
+import subprocess
 from functools import wraps
 import h5py
 import requests
 from tqdm import tqdm
 import numpy as np
-import tables
+import warnings
+from google.cloud import storage
+
+VERSION = "0.7.0"
 
 UK = "openfisca_uk"
 
@@ -135,11 +140,13 @@ def dataset(cls):
     if not hasattr(cls, "upload"):
 
         def upload(year):
-            from google.cloud import storage
-
-            client = storage.Client()
-            bucket = client.get_bucket("policyengine-uk-data")
-            blob = bucket.blob(cls.file(year).name)
+            bucket = get_storage_bucket()
+            blob = bucket.blob(
+                cls.file(year).name[:-3]
+                + "_v"
+                + VERSION.replace(".", "_")
+                + ".h5"
+            )
             with open(cls.file(year), "rb") as f:
                 blob.upload_from_file(f)
 
@@ -148,17 +155,52 @@ def dataset(cls):
     if not hasattr(cls, "download"):
 
         def download(year):
-            from google.cloud import storage
-
-            client = storage.Client()
-            bucket = client.get_bucket("policyengine-uk-data")
-            blob = bucket.blob(cls.file(year).name)
+            bucket = get_storage_bucket()
+            filenames = list(map(lambda blob: blob.name, bucket.list_blobs()))
+            selected_file, match_type = select_best_version(
+                filenames, cls, year
+            )
+            if selected_file is None:
+                raise Exception(
+                    "No acceptable version of the dataset could be found."
+                )
+            if match_type != "exact":
+                logging.warning(
+                    f"Sub-optimal match type: {match_type}. Consider updating the openfisca-uk-data package version."
+                )
+            blob = bucket.blob(selected_file)
             with open(cls.file(year), "wb") as f:
                 blob.download_to_file(f)
 
         cls.download = staticmethod(download)
 
     return cls
+
+
+def get_storage_bucket() -> storage.Bucket:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            client = storage.Client()
+        except:
+            logging.info(
+                "Could not automatically authenticate with Google Cloud, prompting login..."
+            )
+            failed_login = subprocess.check_call(
+                ["gcloud auth application-default login"],
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            if not failed_login:
+                logging.info("Successfully logged in to Google Cloud.")
+                client = storage.Client()
+            else:
+                raise Exception("Could not authenticate with Google Cloud.")
+    try:
+        return client.get_bucket("policyengine-uk-data")
+    except:
+        raise Exception("Your account does not have sufficient permissions.")
 
 
 def data_folder(path: str, erase=False) -> Path:
@@ -173,6 +215,41 @@ def data_folder(path: str, erase=False) -> Path:
 def safe_rmdir(path: str):
     if Path(path).exists():
         shutil.rmtree(path)
+
+
+def extract_version_info(filename: str) -> Tuple[int, int, int]:
+    filename = filename.split(".")[0]
+    if "v" in filename:
+        return (*tuple(map(int, filename.split("v")[1].split("_"))), filename)
+    else:
+        return None
+
+
+def select_best_version(
+    filenames: List[str], dataset: type, year: int
+) -> Tuple[str, str]:
+    pattern = r"{name}_{year}(|_v[0-9]+_[0-9]+_[0-9]+).h5".format(
+        name=dataset.name, year=year
+    )
+    dataset_filenames = filter(lambda name: re.match(pattern, name), filenames)
+    filenames_with_versions = map(extract_version_info, dataset_filenames)
+    versions = sorted(filter(None, filenames_with_versions), reverse=True)
+    current_major, current_minor, current_patch = map(int, VERSION.split("."))
+    for major, minor, patch, filename in versions:
+        # Go down the list sorted by version number descending
+        if major == current_major:
+            if minor == current_minor:
+                if patch == current_patch:
+                    match_type = "exact"
+                else:
+                    match_type = "minor"
+            else:
+                match_type = "major"
+            return filename + ".h5", match_type
+    general_name = dataset.file(year).name
+    if general_name in filenames:
+        return general_name, "general"
+    return None, None
 
 
 PACKAGE_DIR = Path(__file__).parent
