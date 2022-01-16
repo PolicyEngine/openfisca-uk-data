@@ -6,11 +6,16 @@ REPO = Path(__file__).parent
 
 
 DATASETS = (
+    RawFRS,
+    UKMODInput,
+    UKMODOutput,
     FRS,
     SynthFRS,
+    RawSPI,
+    SPI,
     FRS_SPI_Adjusted,
     FRS_WAS_Imputation,
-    FRSEnhanced,
-    SPI,
+    RawWAS,
     RawLCF,
+    FRSEnhanced,
 )

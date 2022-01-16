@@ -1,5 +1,5 @@
 from openfisca_uk_data.utils import *
-from openfisca_uk_data.datasets.frs.frs import FRS
+from openfisca_uk_data.datasets.frs.frs_enhanced import FRSEnhanced
 import shutil
 import pandas as pd
 import numpy as np
@@ -43,7 +43,7 @@ class SynthFRS:
                     result = result.sample(frac=1).values * noise
             return result
 
-        data = FRS.load(year)
+        data = FRSEnhanced.load(year)
         year = int(year)
 
         with h5py.File(SynthFRS.file(year), mode="w") as f:
@@ -55,20 +55,14 @@ class SynthFRS:
                         "S"
                     )
 
-    def save(data_file: str = DEFAULT_SYNTH_FILE, year: int = 2019):
-        if "https://" in data_file:
-            response = requests.get(data_file, stream=True)
-            total_size_in_bytes = int(
-                response.headers.get("content-length", 0)
+    def download(year: int = 2019):
+        if year == 2018:
+            SynthFRS.save(
+                "https://github.com/PolicyEngine/openfisca-uk-data/releases/download/synth-frs/synth_frs_2018.h5",
+                2018,
             )
-            block_size = 1024  # 1 Kibibyte
-            progress_bar = tqdm(
-                total=total_size_in_bytes, unit="iB", unit_scale=True
+        elif year == 2019:
+            SynthFRS.save(
+                "https://github.com/PolicyEngine/openfisca-uk-data/releases/download/synth-frs-2019/synth_frs_2019.h5",
+                2019,
             )
-            with open(SynthFRS.file(year), "wb") as file:
-                for data in response.iter_content(block_size):
-                    progress_bar.update(len(data))
-                    file.write(data)
-            progress_bar.close()
-        else:
-            shutil.copyfile(data_file, SynthFRS.file(year))

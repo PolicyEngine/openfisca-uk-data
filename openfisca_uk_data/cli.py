@@ -1,25 +1,13 @@
 from argparse import ArgumentParser
 from openfisca_uk_data import *
+import pandas as pd
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 
 def main():
-    datasets = {
-        ds.name: ds
-        for ds in (
-            RawFRS,
-            UKMODInput,
-            UKMODOutput,
-            FRS,
-            SynthFRS,
-            RawSPI,
-            SPI,
-            FRS_SPI_Adjusted,
-            FRS_WAS_Imputation,
-            RawWAS,
-            RawLCF,
-            FRSEnhanced,
-        )
-    }
+    datasets = {ds.name: ds for ds in DATASETS}
     parser = ArgumentParser(
         description="A utility for storing OpenFisca-UK-compatible microdata."
     )
@@ -29,10 +17,28 @@ def main():
         "args", nargs="*", help="The arguments to pass to the function"
     )
     args = parser.parse_args()
-    try:
-        return getattr(datasets[args.dataset], args.action)(*args.args)
-    except Exception as e:
-        print(f"Encountered an error: {e.with_traceback()}")
+    if args.dataset == "datasets":
+        if args.action == "list":
+            return dataset_summary()
+    else:
+        try:
+            return getattr(datasets[args.dataset], args.action)(*args.args)
+        except Exception as e:
+            print("\n\nEncountered an error:")
+            raise e
+
+
+def dataset_summary() -> str:
+    years = list(sorted(list(set(sum([ds.years for ds in DATASETS], [])))))
+    df = pd.DataFrame(
+        {
+            year: ["✓" if year in ds.years else "" for ds in DATASETS]
+            for year in years
+        },
+        index=[ds.name for ds in DATASETS],
+    )
+    df = df.sort_values(by=list(df.columns[::-1]), ascending=False)
+    return df.to_markdown(tablefmt="pretty")
 
 
 if __name__ == "__main__":
