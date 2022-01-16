@@ -18,7 +18,7 @@ import numpy as np
 import warnings
 from google.cloud import storage
 
-VERSION = "0.7.0"
+VERSION = "0.7.1"
 
 UK = "openfisca_uk"
 
@@ -69,6 +69,10 @@ def dataset(cls):
     cls.filename = staticmethod(filename)
 
     def load(year, key: str = None) -> pd.DataFrame:
+        if year not in cls.years:
+            raise Exception(
+                f"\n\nNo data available for year {year}. To download, run:\n\n\topenfisca-uk-data {cls.name} download {year}\n\nThis may require signing in with Google authentication if it is not publicly available."
+            )
         file = cls.file(year)
         if cls.model:
             if key is None:
@@ -116,7 +120,7 @@ def dataset(cls):
 
     cls.file = staticmethod(lambda year: cls.data_dir / cls.filename(year))
 
-    def save(data_file: str, year: int = 2018):
+    def save(data_file: str, year: int):
         if "https://" in data_file:
             response = requests.get(data_file, stream=True)
             total_size_in_bytes = int(
@@ -168,9 +172,14 @@ def dataset(cls):
                 logging.warning(
                     f"Sub-optimal match type: {match_type}. Consider updating the openfisca-uk-data package version."
                 )
+            else:
+                logging.info(
+                    f"Found dataset with match type: {match_type}, saving..."
+                )
             blob = bucket.blob(selected_file)
             with open(cls.file(year), "wb") as f:
                 blob.download_to_file(f)
+            logging.info("Successfully downloaded and saved dataset.")
 
         cls.download = staticmethod(download)
 
@@ -193,7 +202,9 @@ def get_storage_bucket() -> storage.Bucket:
                 stderr=subprocess.DEVNULL,
             )
             if not failed_login:
-                logging.info("Successfully logged in to Google Cloud.")
+                logging.info(
+                    "Successfully logged in to Google Cloud, attempting to download..."
+                )
                 client = storage.Client()
             else:
                 raise Exception("Could not authenticate with Google Cloud.")
