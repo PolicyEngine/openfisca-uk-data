@@ -190,7 +190,6 @@ def get_storage_bucket() -> storage.Bucket:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         try:
-            assert False
             client = storage.Client()
         except:
             logging.info(
