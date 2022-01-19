@@ -4,9 +4,12 @@ from openfisca_uk_data.utils import *
 import pandas as pd
 from pandas import DataFrame
 import h5py
+import logging
 
 max_ = np.maximum
 where = np.where
+
+logging.basicConfig(level=logging.INFO)
 
 
 @dataset
@@ -22,8 +25,11 @@ class FRS:
         """
 
         # Load raw FRS tables
+        year = int(year)
         raw_frs_files = RawFRS.load(year)
         frs = h5py.File(FRS.file(year), mode="w")
+        logging.info("Generating FRS dataset for year {}".format(year))
+        logging.info("Loading FRS tables")
         TABLES = (
             "adult",
             "child",
@@ -56,10 +62,12 @@ class FRS:
         ) = [raw_frs_files[table] for table in TABLES]
         raw_frs_files.close()
 
+        logging.info("Joining adult and child tables")
+
         person = pd.concat([adult, child]).sort_index().fillna(0)
 
         # Generate OpenFisca-UK variables and save
-
+        logging.info("Generating OpenFisca-UK variables")
         add_id_variables(frs, person, benunit, household)
         add_personal_variables(frs, person)
         add_benunit_variables(frs, benunit)
@@ -79,6 +87,7 @@ class FRS:
             pen_prov,
         )
         frs.close()
+        logging.info("Completed FRS generation")
 
 
 def sum_to_entity(
@@ -553,7 +562,7 @@ def sum_positive_variables(variables: List[str]) -> np.array:
     Returns:
         np.array
     """
-    return sum(filter(lambda x: x > 0, variables))
+    return sum([np.where(variable > 0, variable, 0) for variable in variables])
 
 
 def fill_with_mean(
