@@ -4,9 +4,12 @@ from openfisca_uk_data.utils import *
 import pandas as pd
 from pandas import DataFrame
 import h5py
+import logging
 
 max_ = np.maximum
 where = np.where
+
+logging.basicConfig(level=logging.INFO)
 
 
 @dataset
@@ -22,8 +25,11 @@ class FRS:
         """
 
         # Load raw FRS tables
+        year = int(year)
         raw_frs_files = RawFRS.load(year)
         frs = h5py.File(FRS.file(year), mode="w")
+        logging.info("Generating FRS dataset for year {}".format(year))
+        logging.info("Loading FRS tables")
         TABLES = (
             "adult",
             "child",
@@ -56,10 +62,12 @@ class FRS:
         ) = [raw_frs_files[table] for table in TABLES]
         raw_frs_files.close()
 
+        logging.info("Joining adult and child tables")
+
         person = pd.concat([adult, child]).sort_index().fillna(0)
 
         # Generate OpenFisca-UK variables and save
-
+        logging.info("Generating OpenFisca-UK variables")
         add_id_variables(frs, person, benunit, household)
         add_personal_variables(frs, person)
         add_benunit_variables(frs, benunit)
@@ -79,6 +87,7 @@ class FRS:
             pen_prov,
         )
         frs.close()
+        logging.info("Completed FRS generation")
 
 
 def sum_to_entity(
@@ -490,27 +499,70 @@ def add_market_income(
         where(use_DWP_usual_amount, person.MNTUSAM2, person.MNTAMT2)
     )
     frs["maintenance_income"] = (
-        max_(0, maintenance_to_self + maintenance_from_DWP) * 52
+        sum_positive_variables([maintenance_to_self, maintenance_from_DWP])
+        * 52
     )
 
     odd_job_income = sum_to_entity(
         oddjob.OJAMT * (oddjob.OJNOW == 1), oddjob.person_id, person.index
     )
 
+    MISC_INCOME_FIELDS = [
+        "ALLPAY2",
+        "ROYYR2",
+        "ROYYR3",
+        "ROYYR4",
+        "CHAMTERN",
+        "CHAMTTST",
+    ]
+
     frs["miscellaneous_income"] = (
-        odd_job_income
-        + person[
-            ["ALLPAY2", "ROYYR2", "ROYYR3", "ROYYR4", "CHAMTERN", "CHAMTTST"]
-        ].sum(axis=1)
+        odd_job_income + sum_from_positive_fields(person, MISC_INCOME_FIELDS)
     ) * 52
+
+    PRIVATE_TRANSFER_INCOME_FIELDS = [
+        "APAMT",
+        "APDAMT",
+        "PAREAMT",
+        "ALLPAY1",
+        "ALLPAY3",
+        "ALLPAY4",
+    ]
 
     frs["private_transfer_income"] = (
-        person[
-            ["APAMT", "APDAMT", "PAREAMT", "ALLPAY1", "ALLPAY3", "ALLPAY4"]
-        ].sum(axis=1)
-    ) * 52
+        sum_from_positive_fields(person, PRIVATE_TRANSFER_INCOME_FIELDS) * 52
+    )
 
     frs["lump_sum_income"] = person.REDAMT
+
+
+def sum_from_positive_fields(
+    table: pd.DataFrame, fields: List[str]
+) -> np.array:
+    """Sum from fields in table, ignoring negative values.
+
+    Args:
+        table (DataFrame)
+        fields (List[str])
+
+    Returns:
+        np.array
+    """
+    return np.where(
+        table[fields].sum(axis=1) > 0, table[fields].sum(axis=1), 0
+    )
+
+
+def sum_positive_variables(variables: List[str]) -> np.array:
+    """Sum positive variables.
+
+    Args:
+        variables (List[str])
+
+    Returns:
+        np.array
+    """
+    return sum([np.where(variable > 0, variable, 0) for variable in variables])
 
 
 def fill_with_mean(
