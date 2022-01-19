@@ -489,28 +489,44 @@ def add_market_income(
     maintenance_from_DWP = pd.Series(
         where(use_DWP_usual_amount, person.MNTUSAM2, person.MNTAMT2)
     )
-    frs["maintenance_income"] = (
-        max_(0, maintenance_to_self + maintenance_from_DWP) * 52
-    )
+    frs["maintenance_income"] = sum_positive_variables([maintenance_to_self, maintenance_from_DWP]) * 52
 
     odd_job_income = sum_to_entity(
         oddjob.OJAMT * (oddjob.OJNOW == 1), oddjob.person_id, person.index
     )
 
-    frs["miscellaneous_income"] = (
-        odd_job_income
-        + person[
-            ["ALLPAY2", "ROYYR2", "ROYYR3", "ROYYR4", "CHAMTERN", "CHAMTTST"]
-        ].sum(axis=1)
-    ) * 52
+    MISC_INCOME_FIELDS = ["ALLPAY2", "ROYYR2", "ROYYR3", "ROYYR4", "CHAMTERN", "CHAMTTST"]
 
-    frs["private_transfer_income"] = (
-        person[
-            ["APAMT", "APDAMT", "PAREAMT", "ALLPAY1", "ALLPAY3", "ALLPAY4"]
-        ].sum(axis=1)
-    ) * 52
+    frs["miscellaneous_income"] = (odd_job_income + sum_from_positive_fields(person, MISC_INCOME_FIELDS)) * 52
+
+    PRIVATE_TRANSFER_INCOME_FIELDS = ["APAMT", "APDAMT", "PAREAMT", "ALLPAY1", "ALLPAY3", "ALLPAY4"]
+
+    frs["private_transfer_income"] = sum_from_positive_fields(person, PRIVATE_TRANSFER_INCOME_FIELDS) * 52
 
     frs["lump_sum_income"] = person.REDAMT
+
+def sum_from_positive_fields(table: pd.DataFrame, fields: List[str]) -> np.array:
+    """Sum from fields in table, ignoring negative values.
+
+    Args:
+        table (DataFrame)
+        fields (List[str])
+
+    Returns:
+        np.array
+    """
+    return np.where(table[fields].sum(axis=1) > 0, table[fields].sum(axis=1), 0)
+
+def sum_positive_variables(variables: List[str]) -> np.array:
+    """Sum positive variables.
+
+    Args:
+        variables (List[str])
+
+    Returns:
+        np.array
+    """
+    return sum(filter(lambda x: x > 0, variables))
 
 
 def fill_with_mean(
