@@ -489,23 +489,47 @@ def add_market_income(
     maintenance_from_DWP = pd.Series(
         where(use_DWP_usual_amount, person.MNTUSAM2, person.MNTAMT2)
     )
-    frs["maintenance_income"] = sum_positive_variables([maintenance_to_self, maintenance_from_DWP]) * 52
+    frs["maintenance_income"] = (
+        sum_positive_variables([maintenance_to_self, maintenance_from_DWP])
+        * 52
+    )
 
     odd_job_income = sum_to_entity(
         oddjob.OJAMT * (oddjob.OJNOW == 1), oddjob.person_id, person.index
     )
 
-    MISC_INCOME_FIELDS = ["ALLPAY2", "ROYYR2", "ROYYR3", "ROYYR4", "CHAMTERN", "CHAMTTST"]
+    MISC_INCOME_FIELDS = [
+        "ALLPAY2",
+        "ROYYR2",
+        "ROYYR3",
+        "ROYYR4",
+        "CHAMTERN",
+        "CHAMTTST",
+    ]
 
-    frs["miscellaneous_income"] = (odd_job_income + sum_from_positive_fields(person, MISC_INCOME_FIELDS)) * 52
+    frs["miscellaneous_income"] = (
+        odd_job_income + sum_from_positive_fields(person, MISC_INCOME_FIELDS)
+    ) * 52
 
-    PRIVATE_TRANSFER_INCOME_FIELDS = ["APAMT", "APDAMT", "PAREAMT", "ALLPAY1", "ALLPAY3", "ALLPAY4"]
+    PRIVATE_TRANSFER_INCOME_FIELDS = [
+        "APAMT",
+        "APDAMT",
+        "PAREAMT",
+        "ALLPAY1",
+        "ALLPAY3",
+        "ALLPAY4",
+    ]
 
-    frs["private_transfer_income"] = sum_from_positive_fields(person, PRIVATE_TRANSFER_INCOME_FIELDS) * 52
+    frs["private_transfer_income"] = (
+        sum_from_positive_fields(person, PRIVATE_TRANSFER_INCOME_FIELDS) * 52
+    )
 
     frs["lump_sum_income"] = person.REDAMT
 
-def sum_from_positive_fields(table: pd.DataFrame, fields: List[str]) -> np.array:
+
+def sum_from_positive_fields(
+    table: pd.DataFrame, fields: List[str]
+) -> np.array:
     """Sum from fields in table, ignoring negative values.
 
     Args:
@@ -515,7 +539,10 @@ def sum_from_positive_fields(table: pd.DataFrame, fields: List[str]) -> np.array
     Returns:
         np.array
     """
-    return np.where(table[fields].sum(axis=1) > 0, table[fields].sum(axis=1), 0)
+    return np.where(
+        table[fields].sum(axis=1) > 0, table[fields].sum(axis=1), 0
+    )
+
 
 def sum_positive_variables(variables: List[str]) -> np.array:
     """Sum positive variables.
