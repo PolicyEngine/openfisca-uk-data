@@ -36,6 +36,6 @@ jobs:
       - name: Install package
         run: make install
       - name: Download prerequisites
-        run: openfisca-uk-data raw_frs download 2018 & openfisca-uk-data ukmod_input download 2018 & openfisca-uk-data raw_was download 2016
+        run: openfisca-uk-data raw_frs download 2018 & openfisca-uk-data raw_was download 2016
       - name: Run tests and build documentation
         run: make test

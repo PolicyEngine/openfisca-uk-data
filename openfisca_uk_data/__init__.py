@@ -7,8 +7,6 @@ REPO = Path(__file__).parent
 
 DATASETS = (
     RawFRS,
-    UKMODInput,
-    UKMODOutput,
     FRS,
     SynthFRS,
     RawSPI,
