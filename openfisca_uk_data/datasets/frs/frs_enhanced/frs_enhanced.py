@@ -21,19 +21,19 @@ class FRSEnhanced:
     def generate(year: int) -> None:
         folder = Path(__file__).parent
         print(
-            "Imputing FRS property, corporate and land wealth...",
-            end="",
-            flush=True,
-        )
-        t = time()
-        pred_wealth = impute_wealth(year)
-        print(
-            f" (completed in {round(time() - t, 1)}s)\nImputing FRS consumption categories...",
+            "Imputing FRS consumption categories...",
             end="",
             flush=True,
         )
         t = time()
         pred_consumption = impute_consumption(year)
+        print(
+            f" (completed in {round(time() - t, 1)}s)\nImputing FRS property, corporate and land wealth...",
+            end="",
+            flush=True,
+        )
+        t = time()
+        pred_wealth = impute_wealth(year)
         print(
             f" (completed in {round(time() - t, 1)}s)\nGenerating default FRS...",
             end="",

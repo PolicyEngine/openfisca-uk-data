@@ -267,7 +267,7 @@ def add_household_variables(frs: h5py.File, household: DataFrame):
         household (DataFrame)
     """
     # Add region
-    from openfisca_uk.variables.demographic.household import Region
+    from openfisca_uk.variables.household.demographic.household import Region
 
     REGIONS = [
         "NORTH_EAST",
