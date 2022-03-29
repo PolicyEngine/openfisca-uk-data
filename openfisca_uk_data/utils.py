@@ -18,7 +18,7 @@ import numpy as np
 import warnings
 from google.cloud import storage
 
-VERSION = "0.7.2"
+VERSION = "0.7.3"
 
 UK = "openfisca_uk"
 
@@ -69,6 +69,10 @@ def dataset(cls):
     cls.filename = staticmethod(filename)
 
     def load(year, key: str = None) -> pd.DataFrame:
+        try:
+            year = int(year)
+        except:
+            pass
         if year not in cls.years:
             raise Exception(
                 f"\n\nNo data available for year {year}. To download, run:\n\n\topenfisca-uk-data {cls.name} download {year}\n\nThis may require signing in with Google authentication if it is not publicly available."

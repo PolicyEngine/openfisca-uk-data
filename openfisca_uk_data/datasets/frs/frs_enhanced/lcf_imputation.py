@@ -6,27 +6,31 @@ from openfisca_uk_data.datasets.lcf import RawLCF
 from microdf import MicroDataFrame
 import synthimpute as si
 
-CATEGORY_NAMES = {
-    1: "Food and non-alcoholic beverages",
-    2: "Alcohol and tobacco",
-    3: "Clothing and footwear",
-    4: "Housing, water and electricity",
-    5: "Household furnishings",
-    6: "Health",
-    7: "Transport",
-    8: "Communication",
-    9: "Recreation",
-    10: "Education",
-    11: "Restaurants and hotels",
-    12: "Miscellaneous",
-}
+CATEGORY_NAMES = dict(
+    # Top-level COICOP categories
+    P601="Food and non-alcoholic beverages",
+    P602="Alcohol and tobacco",
+    P603="Clothing and footwear",
+    P604="Housing, water and electricity",
+    P605="Household furnishings",
+    P606="Health",
+    P607="Transport",
+    P608="Communication",
+    P609="Recreation",
+    P610="Education",
+    P611="Restaurants and hotels",
+    P612="Miscellaneous",
+    # Specific items
+    C72211="Petrol spending",
+    C72212="Diesel spending",
+)
 
 name_to_variable_name = {
     category: category.replace(",", "")
     .replace(" ", "_")
     .replace("-", "_")
     .lower()
-    + "_consumption"
+    + ("_consumption" if category[1:] == "P" else "")
     for category in CATEGORY_NAMES.values()
 }
 
@@ -128,13 +132,7 @@ def load_lcfs(year: int) -> MicroDataFrame:
         MicroDataFrame: The LCF data
     """
     households, people = load_and_process_lcf(year)
-    index_to_col = {i: f"P6{i:02}" for i in CATEGORY_NAMES}
-    spending = (
-        households[list(index_to_col.values())]
-        .rename(columns={y: x for x, y in index_to_col.items()})
-        .unstack()
-        .reset_index()
-    )
+    spending = households[list(CATEGORY_NAMES.keys())].unstack().reset_index()
     spending.columns = "category", "household", "spending"
     spending["household"] = households.case[spending.household].values
     households = households.set_index("case")
