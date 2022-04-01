@@ -67,7 +67,7 @@ def add_demographics(spi: h5py.File, main: DataFrame):
         12: "NORTHERN_IRELAND",
     }
 
-    spi["region"] = np.array([REGIONS.get(x, "SOUTH_EAST") for x in main.GORCODE]).astype("S")
+    spi["region"] = np.array([REGIONS.get(x, "UNKNOWN") for x in main.GORCODE]).astype("S")
 
 
 def add_incomes(spi: h5py.File, main: DataFrame):
