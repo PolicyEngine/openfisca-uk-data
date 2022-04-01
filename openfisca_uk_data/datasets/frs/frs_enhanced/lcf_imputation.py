@@ -8,18 +8,18 @@ import synthimpute as si
 
 CATEGORY_NAMES = dict(
     # Top-level COICOP categories
-    P601="Food and non-alcoholic beverages",
-    P602="Alcohol and tobacco",
-    P603="Clothing and footwear",
-    P604="Housing, water and electricity",
-    P605="Household furnishings",
-    P606="Health",
-    P607="Transport",
-    P608="Communication",
-    P609="Recreation",
-    P610="Education",
-    P611="Restaurants and hotels",
-    P612="Miscellaneous",
+    P601="Food and non-alcoholic beverages consumption",
+    P602="Alcohol and tobacco consumption",
+    P603="Clothing and footwear consumption",
+    P604="Housing, water and electricity consumption",
+    P605="Household furnishings consumption",
+    P606="Health consumption",
+    P607="Transport consumption",
+    P608="Communication consumption",
+    P609="Recreation consumption",
+    P610="Education consumption",
+    P611="Restaurants and hotels consumption",
+    P612="Miscellaneous consumption",
     # Specific items
     C72211="Petrol spending",
     C72212="Diesel spending",
@@ -63,11 +63,12 @@ REGIONS = {
 }
 
 
-def impute_consumption(year: int) -> pd.Series:
+def impute_consumption(year: int, dataset: type = FRS) -> pd.Series:
     """Impute consumption by fitting a random forest model.
 
     Args:
         year (int): The year of LCFS to use.
+        dataset (type): The dataset to use.
 
     Returns:
         pd.Series: The imputed consumption categories.
@@ -77,15 +78,16 @@ def impute_consumption(year: int) -> pd.Series:
     lcf = load_lcfs(year)
 
     # Impute LCF consumption to FRS households
-    return impute_consumption_to_FRS(lcf, year)
+    return impute_consumption_to_FRS(lcf, year, dataset)
 
 
-def impute_consumption_to_FRS(lcf: MicroDataFrame, year: int) -> pd.Series:
+def impute_consumption_to_FRS(lcf: MicroDataFrame, year: int, dataset: type = FRS) -> pd.Series:
     """Impute consumption to the FRS.
 
     Args:
         lcf (MicroDataFrame): The LCF data.
         year (int): The year of the FRS to use.
+        dataset (type): The dataset to use.
 
     Returns:
         MicroDataFrame: The imputed consumption.
@@ -93,7 +95,7 @@ def impute_consumption_to_FRS(lcf: MicroDataFrame, year: int) -> pd.Series:
 
     from openfisca_uk import Microsimulation
 
-    sim = Microsimulation(dataset=FRS, year=year)
+    sim = Microsimulation(dataset=dataset, year=year, adjust_weights=False)
 
     frs = sim.df(
         [
@@ -119,6 +121,7 @@ def impute_consumption_to_FRS(lcf: MicroDataFrame, year: int) -> pd.Series:
         y_train=lcf[CATEGORY_VARIABLES],
         x_new=frs,
         verbose=True,
+        ignore_target=True,
     )
 
 

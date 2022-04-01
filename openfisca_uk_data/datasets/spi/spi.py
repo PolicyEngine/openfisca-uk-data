@@ -25,7 +25,7 @@ class SPI:
         spi = h5py.File(SPI.file(year), mode="w")
 
         add_id_variables(spi, main)
-        add_age(spi, main)
+        add_demographics(spi, main)
         add_incomes(spi, main)
 
         # Generate OpenFisca-UK variables and save
@@ -39,15 +39,35 @@ def add_id_variables(spi: h5py.File, main: DataFrame):
     spi["benunit_id"] = main.index
     spi["household_id"] = main.index
     spi["role"] = np.array(["adult"] * len(main)).astype("S")
+    spi["person_state_role"] = np.array(["citizen"] * len(main)).astype("S")
+    spi["state_id"] = np.array([1])
+    spi["person_state_id"] = np.array([1] * len(main))
 
 
-def add_age(spi: h5py.File, main: DataFrame):
+def add_demographics(spi: h5py.File, main: DataFrame):
     LOWER = np.array([16, 25, 35, 45, 55, 65, 75])
     UPPER = np.array([25, 35, 45, 55, 65, 75, 80])
     age_range = main.AGERANGE - 1
     spi["age"] = LOWER[age_range] + np.random.rand(len(main)) * (
         UPPER[age_range] - LOWER[age_range]
     )
+
+    REGIONS = {
+        1: "NORTH_EAST",
+        2: "NORTH_WEST",
+        3: "YORKSHIRE",
+        4: "EAST_MIDLANDS",
+        5: "WEST_MIDLANDS",
+        6: "EAST_OF_ENGLAND",
+        7: "LONDON",
+        8: "SOUTH_EAST",
+        9: "SOUTH_WEST",
+        10: "WALES",
+        11: "SCOTLAND",
+        12: "NORTHERN_IRELAND",
+    }
+
+    spi["region"] = np.array([REGIONS.get(x, "SOUTH_EAST") for x in main.GORCODE]).astype("S")
 
 
 def add_incomes(spi: h5py.File, main: DataFrame):

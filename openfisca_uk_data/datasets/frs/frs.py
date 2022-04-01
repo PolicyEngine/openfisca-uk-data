@@ -467,10 +467,11 @@ def add_market_income(
         household_property_income[person.household_id].values,
         index=person.index,
     ).fillna(0)
-    frs["property_income"] = (
+    frs["property_income"] = max_(
+        0,
         is_head * persons_household_property_income
         + person.CVPAY
-        + person.ROYYR1
+        + person.ROYYR1,
     ) * 52
 
     # Discrepancy in maintenance income (UKMOD appears to use last amount rather than usual, with "not usual" answer):

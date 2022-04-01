@@ -11,8 +11,6 @@ DATASETS = (
     SynthFRS,
     RawSPI,
     SPI,
-    FRS_SPI_Adjusted,
-    FRS_WAS_Imputation,
     RawWAS,
     RawLCF,
     FRSEnhanced,

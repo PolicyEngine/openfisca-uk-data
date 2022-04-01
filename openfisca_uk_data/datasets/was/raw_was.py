@@ -25,7 +25,7 @@ class RawWAS:
         main_folder = next(folder.iterdir())
         tab_folder = main_folder / "tab"
         if tab_folder.exists():
-            criterion = re.compile("was_round_6_hhold_eul_mar_20\.tab")
+            criterion = re.compile("was_round_7_hhold_eul_jan_2022\.tab")
             data_files = [
                 path
                 for path in tab_folder.iterdir()

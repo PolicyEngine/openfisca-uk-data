@@ -6,21 +6,22 @@ import microdf as mdf
 import synthimpute as si
 
 
-def impute_wealth(year: int) -> pd.Series:
+def impute_wealth(year: int, dataset: type = FRS) -> pd.Series:
     """Impute wealth by fitting a random forest model.
 
     Args:
-            year (int): The year of simulation.
+        year (int): The year of simulation.
+        dataset (type): The dataset to use.
 
     Returns:
-            pd.Series: The predicted wealth values.
+        pd.Series: The predicted wealth values.
     """
 
     was = load_and_process_was()
 
     from openfisca_uk import Microsimulation
 
-    sim = Microsimulation(dataset=FRS, year=year)
+    sim = Microsimulation(dataset=dataset, year=year, adjust_weights=False)
 
     TRAIN_COLS = [
         "gross_income",
@@ -36,7 +37,7 @@ def impute_wealth(year: int) -> pd.Series:
     ]
 
     IMPUTE_COLS = [
-        "owned_land_value",
+        "owned_land",
         "property_wealth",
         "corporate_wealth",
         "gross_financial_wealth",
@@ -52,7 +53,7 @@ def impute_wealth(year: int) -> pd.Series:
         "dividend_income",
         "savings_interest_income",
         "people",
-        "net_income",
+        "household_net_income",
         "household_weight",
     ]
 
@@ -66,6 +67,7 @@ def impute_wealth(year: int) -> pd.Series:
         y_train=was[IMPUTE_COLS],
         x_new=frs[TRAIN_COLS],
         verbose=True,
+        ignore_target=True,
     )
 
 
@@ -76,49 +78,74 @@ def load_and_process_was() -> pd.DataFrame:
             pd.DataFrame: The processed dataframe.
     """
     RENAMES = {
-        "R6xshhwgt": "weight",
+        "R7xshhwgt": "weight",
         # Components for estimating land holdings.
-        "DVLUKValR6_sum": "owned_land_value",  # In the UK.
-        "DVPropertyR6": "property_wealth",
-        "DVFESHARESR6_aggr": "emp_shares_options",
-        "DVFShUKVR6_aggr": "uk_shares",
-        "DVIISAVR6_aggr": "investment_isas",
-        "DVFCollVR6_aggr": "unit_investment_trusts",
-        "TotpenR6_aggr": "pensions",
-        "DvvalDBTR6_aggr": "db_pensions",
+        "DVLUKValR7_sum": "owned_land",  # In the UK.
+        "DVPropertyR7": "property_wealth",
+        "DVFESHARESR7_aggr": "emp_shares_options",
+        "DVFShUKVR7_aggr": "uk_shares",
+        "DVIISAVR7_aggr": "investment_isas",
+        "DVFCollVR7_aggr": "unit_investment_trusts",
+        "TotpenR7_aggr": "pensions",
+        "DvvalDBTR7_aggr": "db_pensions",
         # Predictors for fusing to FRS.
-        "dvtotgirR6": "gross_income",
-        "NumAdultW6": "num_adults",
-        "NumCh18W6": "num_children",
+        "dvtotgirR7": "gross_income",
+        "NumAdultW7": "num_adults",
+        "NumCh18W7": "num_children",
         # Household Gross Annual income from occupational or private pensions
-        "DVGIPPENR6_AGGR": "pension_income",
-        "DVGISER6_AGGR": "self_employment_income",
+        "DVGIPPENR7_AGGR": "pension_income",
+        "DVGISER7_AGGR": "self_employment_income",
         # Household Gross annual income from investments
-        "DVGIINVR6_aggr": "investment_income",
+        "DVGIINVR7_aggr": "investment_income",
         # Household Total Annual Gross employee income
-        "DVGIEMPR6_AGGR": "employment_income",
-        "HBedrmW6": "num_bedrooms",
-        "GORR6": "region",
-        "DVPriRntW6": "is_renter",  # {1, 2} TODO: Get codebook values.
-        "CTAmtW6": "council_tax",
+        "DVGIEMPR7_AGGR": "employment_income",
+        "HBedrmW7": "num_bedrooms",
+        "GORR7": "region",
+        "DVPriRntW7": "is_renter",  # {1, 2} TODO: Get codebook values.
+        "CTAmtW7": "council_tax",
         # Other columns for reference.
-        "DVLOSValR6_sum": "non_uk_land",
-        "HFINWNTR6_Sum": "net_financial_wealth",
-        "DVLUKDebtR6_sum": "uk_land_debt",
-        "HFINWR6_Sum": "gross_financial_wealth",
-        "TotWlthR6": "wealth",
-        "DVhvalueR6": "main_residence_value",
-        "DVHseValR6_sum": "other_residential_property_value",
-        "DVBlDValR6_sum": "non_residential_property_value",
+        "DVLOSValR7_sum": "non_uk_land",
+        "HFINWNTR7_Sum": "net_financial_wealth",
+        "DVLUKDebtR7_sum": "uk_land_debt",
+        "HFINWR7_Sum": "gross_financial_wealth",
+        "TotWlthR7": "wealth",
+        "DVhvalueR7": "main_residence_value",
+        "DVHseValR7_sum": "other_residential_property_value",
+        "DVBlDValR7_sum": "non_residential_property_value",
     }
+
+    RENAMES = {key.lower(): value for key, value in RENAMES.items()}
 
     # TODO: Handle different WAS releases
 
     was = (
-        RawWAS.load(2016, "was_round_6_hhold_eul_mar_20")[list(RENAMES.keys())]
-        .rename(columns=RENAMES)
-        .fillna(0)
+        RawWAS.load(2019, "was_round_7_hhold_eul_jan_2022")
     )
+    
+    was = was.rename(columns={col: col.lower() for col in was.columns})
+
+    to_remove = []
+    to_add = {}
+
+    for key in RENAMES:
+        old_key = str(key)
+        if key not in was.columns:
+            key = key.replace("r", "w")
+        if key not in was.columns:
+            key = key.replace("w", "r")
+        if key not in was.columns:
+            raise ValueError(f"Could not find column {key}")
+        else:
+            to_add[key] = RENAMES[old_key]
+            to_remove.append(old_key)
+
+    for key in to_remove:
+        del RENAMES[key]
+
+    for key in to_add:
+        RENAMES[key] = to_add[key]
+
+    was = was.rename(columns=RENAMES).fillna(0)[list(RENAMES.values())]
 
     was["is_renting"] = was["is_renter"] == 1
 
