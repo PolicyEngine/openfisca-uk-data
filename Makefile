@@ -6,7 +6,7 @@ reset:
 install:
 	pip install openfisca-uk
 	pip install synthimpute
-	pip install git+git://github.com/PSLmodels/microdf
+	pip install git+https://github.com/PSLmodels/microdf
 	pip install -e .
 format:
 	black . -l 79
