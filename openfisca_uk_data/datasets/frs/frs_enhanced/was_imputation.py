@@ -21,10 +21,15 @@ def impute_wealth(year: int, dataset: type = FRS) -> pd.Series:
 
     from openfisca_uk import Microsimulation
 
-    sim = Microsimulation(dataset=dataset, year=year, adjust_weights=False)
+    sim = Microsimulation(
+        dataset=dataset,
+        year=year,
+        adjust_weights=False,
+        add_baseline_benefits=False,
+    )
 
     TRAIN_COLS = [
-        "gross_income",
+        "household_net_income",
         "num_adults",
         "num_children",
         "pension_income",
@@ -112,16 +117,15 @@ def load_and_process_was() -> pd.DataFrame:
         "DVhvalueR7": "main_residence_value",
         "DVHseValR7_sum": "other_residential_property_value",
         "DVBlDValR7_sum": "non_residential_property_value",
+        "DVTotinc_bhcR7": "household_net_income",
     }
 
     RENAMES = {key.lower(): value for key, value in RENAMES.items()}
 
     # TODO: Handle different WAS releases
 
-    was = (
-        RawWAS.load(2019, "was_round_7_hhold_eul_jan_2022")
-    )
-    
+    was = RawWAS.load(2019, "was_round_7_hhold_eul_jan_2022")
+
     was = was.rename(columns={col: col.lower() for col in was.columns})
 
     to_remove = []
@@ -148,6 +152,8 @@ def load_and_process_was() -> pd.DataFrame:
     was = was.rename(columns=RENAMES).fillna(0)[list(RENAMES.values())]
 
     was["is_renting"] = was["is_renter"] == 1
+
+    was.household_net_income *= 52  # WAS uses monthly income
 
     was["non_db_pensions"] = was.pensions - was.db_pensions
     was["corporate_wealth"] = was[

@@ -81,7 +81,9 @@ def impute_consumption(year: int, dataset: type = FRS) -> pd.Series:
     return impute_consumption_to_FRS(lcf, year, dataset)
 
 
-def impute_consumption_to_FRS(lcf: MicroDataFrame, year: int, dataset: type = FRS) -> pd.Series:
+def impute_consumption_to_FRS(
+    lcf: MicroDataFrame, year: int, dataset: type = FRS
+) -> pd.Series:
     """Impute consumption to the FRS.
 
     Args:
@@ -95,7 +97,12 @@ def impute_consumption_to_FRS(lcf: MicroDataFrame, year: int, dataset: type = FR
 
     from openfisca_uk import Microsimulation
 
-    sim = Microsimulation(dataset=dataset, year=year, adjust_weights=False)
+    sim = Microsimulation(
+        dataset=dataset,
+        year=year,
+        adjust_weights=False,
+        add_baseline_benefits=False,
+    )
 
     frs = sim.df(
         [
