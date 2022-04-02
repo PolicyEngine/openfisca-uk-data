@@ -12,6 +12,6 @@ def test_synth_works_with_openfisca_uk():
     from openfisca_uk_data import SynthFRS
 
     sim = Microsimulation(
-        dataset=SynthFRS, year=2019, add_baseline_variables=False
+        dataset=SynthFRS, year=2019
     )
     assert not sim.calc("net_income", 2022).isna().any()
