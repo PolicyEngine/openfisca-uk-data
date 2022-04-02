@@ -468,10 +468,14 @@ def add_market_income(
         index=person.index,
     ).fillna(0)
     frs["property_income"] = (
-        is_head * persons_household_property_income
-        + person.CVPAY
-        + person.ROYYR1
-    ) * 52
+        max_(
+            0,
+            is_head * persons_household_property_income
+            + person.CVPAY
+            + person.ROYYR1,
+        )
+        * 52
+    )
 
     # Discrepancy in maintenance income (UKMOD appears to use last amount rather than usual, with "not usual" answer):
 
@@ -775,16 +779,18 @@ def add_expenses(
         * 52
     )
 
-    frs["private_pension_contributions"] = (
+    frs["private_pension_contributions"] = max_(
+        0,
         sum_to_entity(
             pen_prov.PENAMT[pen_prov.STEMPPEN.isin((5, 6))],
             pen_prov.person_id,
             person.index,
         ).clip(0, pen_prov.PENAMT.quantile(0.95))
-        * 52
+        * 52,
     )
-    frs["occupational_pension_contributions"] = (
-        sum_to_entity(job.DEDUC1.fillna(0), job.person_id, person.index) * 52
+    frs["occupational_pension_contributions"] = max_(
+        0,
+        sum_to_entity(job.DEDUC1.fillna(0), job.person_id, person.index) * 52,
     )
 
     frs["housing_service_charges"] = (
