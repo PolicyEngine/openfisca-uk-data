@@ -87,7 +87,7 @@ def subsample(dataset: type, year: int, frac: float = 0.5):
         dataset=dataset,
         year=year,
         adjust_weights=False,
-        add_baseline_benefits=False,
+        add_baseline_variables=False,
         duplicate_records=False,
     )
 

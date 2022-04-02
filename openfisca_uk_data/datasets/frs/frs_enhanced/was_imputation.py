@@ -25,7 +25,7 @@ def impute_wealth(year: int, dataset: type = FRS) -> pd.Series:
         dataset=dataset,
         year=year,
         adjust_weights=False,
-        add_baseline_benefits=False,
+        add_baseline_variables=False,
     )
 
     TRAIN_COLS = [

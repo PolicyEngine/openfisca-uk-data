@@ -101,7 +101,7 @@ def impute_consumption_to_FRS(
         dataset=dataset,
         year=year,
         adjust_weights=False,
-        add_baseline_benefits=False,
+        add_baseline_variables=False,
     )
 
     frs = sim.df(

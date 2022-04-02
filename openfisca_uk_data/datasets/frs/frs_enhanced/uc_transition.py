@@ -32,7 +32,7 @@ def migrate_to_universal_credit(
         year=year,
         adjust_weights=False,
         duplicate_records=False,
-        add_baseline_benefits=False,
+        add_baseline_variables=False,
     )
 
     changes = {

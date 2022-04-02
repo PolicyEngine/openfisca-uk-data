@@ -48,7 +48,7 @@ def impute_incomes(dataset: type = FRS, year: int = 2019) -> MicroDataFrame:
         year=year,
         adjust_weights=False,
         duplicate_records=False,
-        add_baseline_benefits=False,
+        add_baseline_variables=False,
     )
 
     regions = spi.calc("region").unique()
